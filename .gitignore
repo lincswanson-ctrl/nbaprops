@@ -1,0 +1,26 @@
+# Python / tooling
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+.env
+.env.*
+
+# Local / IDE
+.claude/
+.idea/
+.vscode/
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scraped raw dumps — never commit (use object storage / local only)
+data/raw/

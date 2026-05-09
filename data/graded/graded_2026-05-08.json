@@ -1,0 +1,36 @@
+[
+  {
+    "bet_type": "player_prop",
+    "player": "Player A",
+    "player_id": 1001,
+    "game_id": "g1",
+    "market": "player_points",
+    "line": 24.5,
+    "side": "over",
+    "book": "draftkings",
+    "model_prob": 0.58,
+    "outcome": "win",
+    "final_grade": "A",
+    "stake_units": 1.0,
+    "profit_units": 0.91,
+    "actual_value": 28.0,
+    "projection": 26.0
+  },
+  {
+    "bet_type": "player_prop",
+    "player": "Player B",
+    "player_id": 1002,
+    "game_id": "g1",
+    "market": "player_rebounds",
+    "line": 8.5,
+    "side": "under",
+    "book": "draftkings",
+    "model_prob": 0.62,
+    "outcome": "loss",
+    "final_grade": "B+",
+    "stake_units": 1.0,
+    "profit_units": -1.0,
+    "actual_value": 10.0,
+    "projection": 8.0
+  }
+]

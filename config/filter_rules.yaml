@@ -1,0 +1,33 @@
+## NBA prop bet filter rules.
+## Card exposure caps: 0 disables that limit (caps apply only to official_card).
+
+card_caps:
+  max_picks_per_game: 0
+  max_picks_per_team: 0
+  max_same_market_per_game: 0
+  max_unders_per_card: 2
+  max_threes_unders_per_card: 1
+  max_defensive_props_per_card: 1
+
+global:
+  novelty_quota:
+    enabled: false
+    min_new_player_props: 2
+
+quality:
+  auto_reject_below: 50
+
+min_edge_by_confidence:
+  high: 0.0
+  medium: 0.0
+  low: 0.0
+
+research_only_markets: []
+
+market_groups:
+  threes:
+    - player_threes
+  defensive:
+    - player_steals
+    - player_blocks
+    - player_steals_blocks
