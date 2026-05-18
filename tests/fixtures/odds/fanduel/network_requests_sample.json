@@ -1,0 +1,21 @@
+{
+  "bookmaker": "fanduel",
+  "captured_at_utc": "2026-05-09T03:24:50Z",
+  "source_page": "https://sportsbook.fanduel.com/navigation/nba",
+  "requests": [
+    {
+      "method": "POST",
+      "status_code": 200,
+      "url": "https://smp.nj.sportsbook.fanduel.com/api/sports/fixedodds/readonly/v1/getMarketPrices?priceHistory=0"
+    },
+    {
+      "method": "GET",
+      "status_code": 200,
+      "url": "https://api.sportsbook.fanduel.com/ips/inplayservice/v1.0/livedata?channel=WEB&dataEntries=FULL_DETAILS%2CMEDIA_TYPES&_ak=FhMFpcPWXMeyZxOx&eventIds=35573210"
+    }
+  ],
+  "notes": {
+    "state_subdomain_observed": "nj",
+    "payload_not_captured": true
+  }
+}

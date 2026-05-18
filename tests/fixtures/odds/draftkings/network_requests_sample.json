@@ -1,0 +1,22 @@
+{
+  "bookmaker": "draftkings",
+  "captured_at_utc": "2026-05-09T03:18:21Z",
+  "source_page": "https://sportsbook.draftkings.com/leagues/basketball/nba?category=games&subcategory=player-props&nav_1=points",
+  "requests": [
+    {
+      "method": "GET",
+      "status_code": 200,
+      "url": "https://sportsbook-nash.draftkings.com/sites/US-SB/api/sportscontent/controldata/league/leagueSubcategory/v1/markets?isBatchable=false&templateVars=42648&eventsQuery=%24filter%3DleagueId%20eq%20%2742648%27%20AND%20clientMetadata%2FSubcategories%2Fany%28s%3A%20s%2FId%20eq%20%2716477%27%29&marketsQuery=%24filter%3DclientMetadata%2FsubCategoryId%20eq%20%2716477%27%20AND%20tags%2Fall%28t%3A%20t%20ne%20%27SportcastBetBuilder%27%29&include=Events&entity=events"
+    },
+    {
+      "method": "GET",
+      "status_code": 200,
+      "url": "https://sportsbook.draftkings.com/seo/leagues/basketball/nba?category=games&subcategory=player-props&nav_1=points"
+    }
+  ],
+  "notes": {
+    "nba_league_id": "42648",
+    "observed_points_subcategory_id": "16477",
+    "payload_not_captured": true
+  }
+}

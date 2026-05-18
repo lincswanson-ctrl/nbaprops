@@ -1,0 +1,176 @@
+{
+  "all_passed": false,
+  "results": [
+    {
+      "name": "migrate_001",
+      "command": [
+        "psycopg",
+        "C:\\Users\\lincs\\nbaprops\\data_pipeline\\schemas\\001_initial_nba.sql"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "Applied C:\\Users\\lincs\\nbaprops\\data_pipeline\\schemas\\001_initial_nba.sql in 0.73s",
+      "stderr": ""
+    },
+    {
+      "name": "migrate_002",
+      "command": [
+        "psycopg",
+        "C:\\Users\\lincs\\nbaprops\\data_pipeline\\schemas\\002_injuries.sql"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "Applied C:\\Users\\lincs\\nbaprops\\data_pipeline\\schemas\\002_injuries.sql in 0.62s",
+      "stderr": ""
+    },
+    {
+      "name": "scrape_nba",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.scrapers.nba_stats",
+        "--season",
+        "2025-26",
+        "--endpoint",
+        "core",
+        "--max-games",
+        "8",
+        "--core-only"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "5:54:41.409067Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500003 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 73, \"response_size\": 2, \"params\": {\"GameID\": \"0022500003\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:54:43.402568Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500004 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 163, \"response_size\": 5583, \"params\": {\"GameID\": \"0022500004\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:54:45.499238Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500004 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 73, \"response_size\": 2, \"params\": {\"GameID\": \"0022500004\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:54:47.418995Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500005 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 78, \"response_size\": 5356, \"params\": {\"GameID\": \"0022500005\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:54:49.438569Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500005 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 76, \"response_size\": 2, \"params\": {\"GameID\": \"0022500005\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:54:51.450130Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500006 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 84, \"response_size\": 6143, \"params\": {\"GameID\": \"0022500006\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:54:53.467132Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500006 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 74, \"response_size\": 2, \"params\": {\"GameID\": \"0022500006\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:54:55.463339Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500007 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 73, \"response_size\": 5305, \"params\": {\"GameID\": \"0022500007\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:54:57.466774Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500007 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 76, \"response_size\": 2, \"params\": {\"GameID\": \"0022500007\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:54:59.483076Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500008 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 74, \"response_size\": 5815, \"params\": {\"GameID\": \"0022500008\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:55:01.483513Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500008 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 76, \"response_size\": 2, \"params\": {\"GameID\": \"0022500008\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:55:03.486491Z\"}\n{\"season\": \"2025-26\", \"endpoint\": \"core\", \"event\": \"nba_stats_scrape_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:55:03.488263Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "load_nba",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.loaders.nba_stats",
+        "--season",
+        "2025-26"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"season\": \"2025-26\", \"game_date\": \"2026-05-01\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T05:55:04.051066Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-03\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T05:55:04.051256Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-04\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T05:55:04.051382Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-05\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T05:55:04.051496Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-06\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T05:55:04.051606Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-07\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T05:55:04.051709Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-08\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T05:55:04.051810Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-09\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T05:55:04.051909Z\"}\n{\"season\": \"2025-26\", \"games_upserted\": 28, \"event\": \"nba_stats_load_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:59:55.891066Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "validate_nba",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/validate_nba_load.py"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"mismatches\": 0, \"event\": \"nba_load_validation_passed\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T05:59:58.722268Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "validate_bref",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/validate_nba_vs_bref.py",
+        "--season",
+        "2024-25"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"season\": \"2024-25\", \"checked\": 1, \"mismatches\": 0, \"event\": \"bref_validation_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:00.250446Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "scrape_injuries",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.scrapers.injuries",
+        "--source",
+        "all",
+        "--once"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "HTTP Request: GET https://www.rotowire.com/basketball/nba-lineups.php \"HTTP/1.1 200 OK\"\n{\"source\": \"rotowire\", \"fallback\": \"playwright_required\", \"event\": \"injury_cloudflare_detected\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T06:00:03.320753Z\"}\n{\"source\": \"rotowire\", \"records\": 0, \"event\": \"injury_scrape_snapshot\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:03.326600Z\"}\nHTTP Request: GET https://site.api.espn.com/apis/site/v2/sports/basketball/nba/news \"HTTP/1.1 200 OK\"\n{\"source\": \"espn\", \"records\": 1, \"event\": \"injury_scrape_snapshot\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:03.767270Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "load_injury_rw",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.loaders.injuries",
+        "--source",
+        "rotowire"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"source\": \"rotowire\", \"total_records\": 0, \"inserted\": 0, \"deduped\": 0, \"unresolved_names\": 0, \"unmapped_statuses\": 0, \"event\": \"injury_load_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:05.230984Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "load_injury_es",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.loaders.injuries",
+        "--source",
+        "espn"
+      ],
+      "returncode": 1,
+      "passed": false,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"C:\\Users\\lincs\\nbaprops\\data_pipeline\\loaders\\injuries.py\", line 143, in <module>\n    _run_cli()\n    ~~~~~~~~^^\n  File \"C:\\Users\\lincs\\nbaprops\\data_pipeline\\loaders\\injuries.py\", line 130, in _run_cli\n    summary = InjuryLoader().load_snapshot(records)\n  File \"C:\\Users\\lincs\\nbaprops\\data_pipeline\\loaders\\injuries.py\", line 43, in load_snapshot\n    player_id = resolve_player_name(record.raw_player_name, record.team_abbr)\n  File \"C:\\Users\\lincs\\nbaprops\\data_pipeline\\loaders\\name_resolution.py\", line 65, in resolve_player_name\n    cur.execute(\n    ~~~~~~~~~~~^\n        \"\"\"\n        ^^^\n    ...<15 lines>...\n        },\n        ^^\n    )\n    ^\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg\\cursor.py\", line 117, in execute\n    raise ex.with_traceback(None)\npsycopg.errors.InvalidTextRepresentation: invalid input syntax for type bigint: \"chris paul\"\nCONTEXT:  unnamed portal parameter $3 = '...'\n"
+    },
+    {
+      "name": "validate_injuries",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/validate_injury_sources.py",
+        "--min-shared-players",
+        "20"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"timestamp\": \"2026-05-09T06:00:08.687447Z\", \"total_players\": 5, \"disagreements\": 3, \"disagreement_rate\": 60.0, \"event\": \"injury_source_validation\", \"logger\": \"__main__\", \"level\": \"info\"}\n{\"player_name\": \"Anthony Edwards\", \"rotowire_status\": \"unknown\", \"espn_status\": \"available\", \"rotowire_ts\": \"2026-05-08 08:16:29.168009+00:00\", \"espn_ts\": \"2026-05-06 01:19:29.241954+00:00\", \"event\": \"injury_source_disagreement_player\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T06:00:08.687658Z\"}\n{\"player_name\": \"Ayo Dosunmu\", \"rotowire_status\": \"unknown\", \"espn_status\": \"out\", \"rotowire_ts\": \"2026-05-08 08:16:29.168009+00:00\", \"espn_ts\": \"2026-05-01 05:03:29+00:00\", \"event\": \"injury_source_disagreement_player\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T06:00:08.687750Z\"}\n{\"player_name\": \"Joel Embiid\", \"rotowire_status\": \"unknown\", \"espn_status\": \"out\", \"rotowire_ts\": \"2026-05-08 08:16:29.168009+00:00\", \"espn_ts\": \"2026-05-07 07:29:21.558564+00:00\", \"event\": \"injury_source_disagreement_player\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T06:00:08.687812Z\"}\n{\"rotowire_only_count\": 21, \"espn_only_count\": 3, \"event\": \"injury_source_one_sided\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:08.687866Z\"}\n{\"total_players\": 5, \"min_shared_players\": 20, \"event\": \"injury_source_validation_low_sample\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T06:00:08.687919Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "readiness",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/readiness_checks.py",
+        "--min-games",
+        "1000",
+        "--min-players",
+        "450",
+        "--min-player-game-stats",
+        "50000",
+        "--min-injury-rows",
+        "50",
+        "--max-raw-age-minutes",
+        "180",
+        "--max-injury-disagreement-pct",
+        "100"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"name\": \"games_minimum_rows\", \"passed\": true, \"details\": \"count=2527 threshold=1000\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:12.141466Z\"}\n{\"name\": \"players_minimum_rows\", \"passed\": true, \"details\": \"count=688 threshold=450\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:12.141626Z\"}\n{\"name\": \"player_game_stats_minimum_rows\", \"passed\": true, \"details\": \"count=54330 threshold=50000\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:12.141698Z\"}\n{\"name\": \"injury_status_minimum_rows\", \"passed\": true, \"details\": \"count=84 threshold=50\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:12.141752Z\"}\n{\"name\": \"nba_stats_freshness\", \"passed\": true, \"details\": \"latest=0022500008.json age_minutes=5.12\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:12.141803Z\"}\n{\"name\": \"injuries_rotowire_freshness\", \"passed\": true, \"details\": \"latest=20260509T060003Z.html age_minutes=0.12\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:12.141859Z\"}\n{\"name\": \"injuries_espn_freshness\", \"passed\": true, \"details\": \"latest=20260509T060003Z.json age_minutes=0.11\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:12.141907Z\"}\n{\"name\": \"injury_source_disagreement\", \"passed\": true, \"details\": \"total=5 disagreements=3 rate=60.0 threshold=100.0\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T06:00:12.141954Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "tests",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "ssssss...sss............................................................ [ 72%]\n............................                                             [100%]\n91 passed, 9 skipped in 0.61s\n",
+      "stderr": ""
+    }
+  ]
+}

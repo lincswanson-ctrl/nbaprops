@@ -1,0 +1,9 @@
+{
+  "resultSets": [
+    {
+      "name": "CommonPlayerInfo",
+      "headers": ["PERSON_ID", "DISPLAY_FIRST_LAST", "POSITION", "HEIGHT", "WEIGHT"],
+      "rowSet": [[203507, "Giannis Antetokounmpo", "F", "6-11", "242"]]
+    }
+  ]
+}

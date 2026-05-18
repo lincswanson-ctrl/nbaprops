@@ -8,11 +8,14 @@ from pathlib import Path
 from typing import Any, cast
 
 from data_pipeline.scrapers.odds.base import OddsEvent
-from data_pipeline.scrapers.odds.betmgm import _parse_betmgm_player_props
+from data_pipeline.scrapers.odds.betmgm import _looks_like_bot_block, _parse_betmgm_player_props
 
 PLAYER_PROPS_FIXTURE = Path("tests/fixtures/odds/betmgm/player_props_sample.json")
 LIVE_POINTS_FIXTURE = Path("tests/fixtures/odds/betmgm/live_player_points_sample.json")
 PLAYER_REBOUNDS_FIXTURE = Path("tests/fixtures/odds/betmgm/player_rebounds_sample.json")
+OPTION_MARKETS_ASSISTS_FIXTURE = Path(
+    "tests/fixtures/odds/betmgm/option_markets_player_assists_sample.json"
+)
 
 
 def _build_betmgm_event() -> OddsEvent:
@@ -60,6 +63,17 @@ def test_betmgm_parse_live_player_points_props() -> None:
     assert offers
     names = {offer.raw_player_name for offer in offers}
     assert "Cade Cunningham" in names
+
+
+def test_betmgm_parse_option_markets_player_assists() -> None:
+    payload = cast(dict[str, Any], json.loads(OPTION_MARKETS_ASSISTS_FIXTURE.read_text(encoding="utf-8")))
+    offers = _parse_betmgm_player_props(payload, _build_betmgm_event(), "player_assists")
+    assert len(offers) == 1
+    offer = offers[0]
+    assert offer.raw_player_name == "Cade Cunningham"
+    assert offer.line == 6.5
+    assert offer.over_price == -115
+    assert offer.under_price == -105
 
 
 # ---------------------------------------------------------------------------
@@ -173,11 +187,13 @@ def test_betmgm_moneyline_money_line_two_words_matched() -> None:
 
 def _build_betmgm_listing_fixture(competition_name: str, teams: tuple[str, str]) -> dict[str, Any]:
     """Build a minimal BetMGM fixture-listing row for use in _parse_betmgm_events tests."""
-    from datetime import datetime, timezone
-    today = datetime.now(timezone.utc).date().isoformat() + "T20:00:00Z"
+    from datetime import datetime, timedelta, timezone
+
+    future = datetime.now(timezone.utc) + timedelta(days=7)
+    start = future.replace(hour=20, minute=0, second=0, microsecond=0).isoformat().replace("+00:00", "Z")
     return {
         "id": "999",
-        "startDate": today,
+        "startDate": start,
         "competition": {"name": {"value": competition_name}},
         "participants": [
             {"name": {"value": teams[0]}},
@@ -205,14 +221,15 @@ def test_betmgm_parse_events_filters_non_nba_competitions() -> None:
 def test_betmgm_parse_events_keeps_fixture_without_competition_metadata() -> None:
     """_parse_betmgm_events keeps fixtures with no competition key (fail-open)."""
     from data_pipeline.scrapers.odds.betmgm import _parse_betmgm_events
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
 
-    today = datetime.now(timezone.utc).date().isoformat() + "T20:00:00Z"
+    future = datetime.now(timezone.utc) + timedelta(days=7)
+    start = future.replace(hour=20, minute=0, second=0, microsecond=0).isoformat().replace("+00:00", "Z")
     payload = {
         "fixtures": [
             {
                 "id": "111",
-                "startDate": today,
+                "startDate": start,
                 # no "competition" key → kept so we don't silently drop NBA games
                 "participants": [
                     {"name": {"value": "Detroit Pistons"}},
@@ -223,3 +240,21 @@ def test_betmgm_parse_events_keeps_fixture_without_competition_metadata() -> Non
     }
     events = _parse_betmgm_events(payload)
     assert len(events) == 1
+
+
+def test_scraper_falls_back_to_playwright_on_cloudflare() -> None:
+    import httpx
+
+    response = httpx.Response(403, text="Cloudflare attention required")
+    assert _looks_like_bot_block(response) is True
+
+
+def test_betmgm_select_option_market_ids_filters_by_market_tokens() -> None:
+    from data_pipeline.scrapers.odds.betmgm import _select_option_market_ids
+
+    option_markets = [
+        {"id": "1", "name": {"value": "Cade Cunningham (DET): Total points"}},
+        {"id": "2", "name": {"value": "Cade Cunningham (DET): Total rebounds"}},
+        {"id": "3", "name": {"value": "Moneyline"}},
+    ]
+    assert _select_option_market_ids(option_markets, "player_points") == ["1"]

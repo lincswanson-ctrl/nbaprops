@@ -1,0 +1,60 @@
+{
+  "all_passed": false,
+  "results": [
+    {
+      "name": "migrate_001",
+      "command": [
+        "psycopg",
+        "data_pipeline\\schemas\\001_initial_nba.sql"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "Applied data_pipeline\\schemas\\001_initial_nba.sql in 0.7s",
+      "stderr": ""
+    },
+    {
+      "name": "migrate_002",
+      "command": [
+        "psycopg",
+        "data_pipeline\\schemas\\002_injuries.sql"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "Applied data_pipeline\\schemas\\002_injuries.sql in 0.61s",
+      "stderr": ""
+    },
+    {
+      "name": "scrape_nba",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.scrapers.nba_stats",
+        "--season",
+        "2025-26",
+        "--endpoint",
+        "core",
+        "--max-games",
+        "8",
+        "--core-only"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "595145Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500003 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 99, \"response_size\": 2, \"params\": {\"GameID\": \"0022500003\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:45:59.609779Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500004 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 105, \"response_size\": 5583, \"params\": {\"GameID\": \"0022500004\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:01.617555Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500004 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 112, \"response_size\": 2, \"params\": {\"GameID\": \"0022500004\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:03.627800Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500005 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 115, \"response_size\": 5356, \"params\": {\"GameID\": \"0022500005\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:05.640964Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500005 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 105, \"response_size\": 2, \"params\": {\"GameID\": \"0022500005\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:07.632089Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500006 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 102, \"response_size\": 6143, \"params\": {\"GameID\": \"0022500006\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:09.640310Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500006 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 99, \"response_size\": 2, \"params\": {\"GameID\": \"0022500006\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:11.639487Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500007 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 102, \"response_size\": 5305, \"params\": {\"GameID\": \"0022500007\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:13.651721Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500007 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 103, \"response_size\": 2, \"params\": {\"GameID\": \"0022500007\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:15.667375Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500008 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 128, \"response_size\": 5815, \"params\": {\"GameID\": \"0022500008\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:17.704490Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500008 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 103, \"response_size\": 2, \"params\": {\"GameID\": \"0022500008\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:19.682915Z\"}\n{\"season\": \"2025-26\", \"endpoint\": \"core\", \"event\": \"nba_stats_scrape_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:46:19.684503Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "load_nba",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.loaders.nba_stats",
+        "--season",
+        "2025-26"
+      ],
+      "returncode": 1,
+      "passed": false,
+      "stdout": "{\"season\": \"2025-26\", \"game_date\": \"2026-05-01\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:46:20.218171Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-03\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:46:20.218358Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-04\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:46:20.218484Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-05\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:46:20.218590Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-06\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:46:20.218696Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-07\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:46:20.218800Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-08\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:46:20.218903Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-09\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:46:20.219001Z\"}\n",
+      "stderr": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"C:\\Users\\lincs\\nbaprops\\data_pipeline\\loaders\\nba_stats.py\", line 560, in <module>\n    _run_cli()\n    ~~~~~~~~^^\n  File \"C:\\Users\\lincs\\nbaprops\\data_pipeline\\loaders\\nba_stats.py\", line 555, in _run_cli\n    loaded = NBAStatsLoader().load_season(args.season)\n  File \"C:\\Users\\lincs\\nbaprops\\data_pipeline\\loaders\\nba_stats.py\", line 69, in load_season\n    loaded += self._load_boxscores(season)\n              ~~~~~~~~~~~~~~~~~~~~^^^^^^^^\n  File \"C:\\Users\\lincs\\nbaprops\\data_pipeline\\loaders\\nba_stats.py\", line 111, in _load_boxscores\n    rows = _upsert_player_game_stats(cur, stats)\n  File \"C:\\Users\\lincs\\nbaprops\\data_pipeline\\loaders\\nba_stats.py\", line 234, in _upsert_player_game_stats\n    cur.executemany(\n    ~~~~~~~~~~~~~~~^\n        \"\"\"\n        ^^^\n    ...<30 lines>...\n        [row.model_dump() for row in stats],\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg\\cursor.py\", line 148, in executemany\n    raise ex.with_traceback(None)\npsycopg.errors.UndefinedColumn: column \"team_id\" of relation \"player_game_stats\" does not exist\nLINE 3:             player_id, game_id, team_id, minutes, points, re...\n                                        ^\nException ignored while calling deallocator <function ConnectionPool.__del__ at 0x00000248075FA400>:\nTraceback (most recent call last):\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\pool.py\", line 126, in __del__\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\_acompat.py\", line 152, in gather\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\threading.py\", line 1133, in join\nPythonFinalizationError: cannot join thread at interpreter shutdown\n"
+    }
+  ]
+}

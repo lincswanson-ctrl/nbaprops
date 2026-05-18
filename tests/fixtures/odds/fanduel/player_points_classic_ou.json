@@ -1,0 +1,23 @@
+{
+  "markets": [
+    {
+      "marketName": "Player Points",
+      "eventId": "fd_event_1",
+      "marketId": "902",
+      "runners": [
+        {
+          "runnerName": "Cade Cunningham",
+          "handicap": 25.5,
+          "result": {"type": "Over"},
+          "winRunnerOdds": {"americanDisplayOdds": {"americanOdds": -105}}
+        },
+        {
+          "runnerName": "Cade Cunningham",
+          "handicap": 25.5,
+          "result": {"type": "Under"},
+          "winRunnerOdds": {"americanDisplayOdds": {"americanOdds": -115}}
+        }
+      ]
+    }
+  ]
+}

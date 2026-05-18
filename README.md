@@ -30,6 +30,50 @@ Reads `data/edges/edges_<date>.json`, applies `config/filter_rules.yaml`, writes
 
 After `pip install -e ".[dev]"`, run `python -m pytest tests/unit/engine tests/unit/orchestration -q` to verify the filter and orchestration helpers (other unit tests may be skipped if optional packages are missing).
 
+## Daily commands
+
+### Game day (generates picks for today)
+
+```powershell
+py scripts/run_pregame.py --date today --season 2025-26
+```
+
+### Specific date
+
+```powershell
+py scripts/run_pregame.py --date 2026-05-09 --season 2025-26
+```
+
+### Generate picks + open dashboard
+
+```powershell
+py scripts/run_pregame.py --date today --season 2025-26 --open-dashboard
+```
+
+### CSV odds fallback (if live books fail)
+
+Create `data/odds/manual_odds_YYYY-MM-DD.csv` with columns:
+`game_id,market,book,line,price,odds_timestamp`
+
+Then run:
+
+```powershell
+py scripts/run_pregame.py --date 2026-05-09 --season 2025-26 --fail-fast
+```
+
+Optional explicit path override:
+
+```powershell
+$env:PREGAME_ODDS_CSV="C:\path\to\manual_odds.csv"
+py scripts/run_pregame.py --date 2026-05-09 --season 2025-26
+```
+
+### Dashboard only (assumes picks already generated)
+
+```powershell
+py scripts/run_dashboard.py
+```
+
 ## Docs and specs
 
 | Path | Purpose |

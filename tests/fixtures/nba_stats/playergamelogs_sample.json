@@ -1,0 +1,9 @@
+{
+  "resultSets": [
+    {
+      "name": "PlayerGameLogs",
+      "headers": ["PLAYER_ID", "GAME_ID", "PTS"],
+      "rowSet": [[203507, "0022400001", 24]]
+    }
+  ]
+}

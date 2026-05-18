@@ -1,0 +1,12 @@
+{
+  "resultSets": [
+    {
+      "name": "PlayerStats",
+      "headers": ["PLAYER_ID", "TEAM_ID", "MIN", "PTS", "REB", "AST", "START_POSITION", "COMMENT"],
+      "rowSet": [
+        [203507, 1610612737, "32:11", 24, 8, 6, "F", ""],
+        [1629029, 1610612737, "0:00", 0, 0, 0, "", "DNP - Coach's Decision"]
+      ]
+    }
+  ]
+}

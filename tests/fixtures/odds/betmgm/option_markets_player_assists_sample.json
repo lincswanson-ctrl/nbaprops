@@ -1,0 +1,41 @@
+{
+  "fixture": {
+    "id": "19411867",
+    "participants": [],
+    "games": [],
+    "optionMarkets": [
+      {
+        "id": 1510000001,
+        "name": {
+          "value": "Cade Cunningham (DET): Total assists"
+        },
+        "status": "Visible",
+        "options": [
+          {
+            "id": 2180000001,
+            "status": "Visible",
+            "name": {
+              "value": "Over 6.5"
+            },
+            "price": {
+              "americanOdds": -115
+            },
+            "totalsPrefix": "Over"
+          },
+          {
+            "id": 2180000002,
+            "status": "Visible",
+            "name": {
+              "value": "Under 6.5"
+            },
+            "price": {
+              "americanOdds": -105
+            },
+            "totalsPrefix": "Under"
+          }
+        ]
+      }
+    ]
+  }
+}
+

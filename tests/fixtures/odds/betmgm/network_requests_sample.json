@@ -1,0 +1,27 @@
+{
+  "bookmaker": "betmgm",
+  "captured_at_utc": "2026-05-09T03:25:12Z",
+  "source_page": "https://www.nj.betmgm.com/en/sports/basketball-7/betting/usa-9/nba-6004",
+  "requests": [
+    {
+      "method": "GET",
+      "status_code": 200,
+      "url": "https://www.nj.betmgm.com/cds-api/bettingoffer/counts-batch-v2?request=...&x-bwin-accessid=...&lang=en-us&country=US&userCountry=US&subdivision=US-California"
+    },
+    {
+      "method": "GET",
+      "status_code": 200,
+      "url": "https://www.nj.betmgm.com/cds-api/bettingoffer/fixture-offers?x-bwin-accessid=...&lang=en-us&country=US&userCountry=US&subdivision=US-California&fixtureIds=19497151&optionMarketIds=2987526,2987527,...&gameIds=&offerMapping=Filtered"
+    },
+    {
+      "method": "GET",
+      "status_code": 200,
+      "url": "https://www.nj.betmgm.com/cds-api/bettingoffer/fixture-view?x-bwin-accessid=...&lang=en-us&country=US&userCountry=US&subdivision=US-California&offerMapping=All&scoreboardMode=Full&fixtureIds=19488042&state=Latest&includePrecreatedBetBuilder=true&supportVirtual=true&isBettingInsightsEnabled=true&useRegionalisedConfiguration=true&includeRelatedFixtures=false&statisticsModes=All&firstMarketGroupOnly=false"
+    }
+  ],
+  "notes": {
+    "state_host_observed": "www.nj.betmgm.com",
+    "playwright_fallback_recommended": true,
+    "payload_not_captured": true
+  }
+}

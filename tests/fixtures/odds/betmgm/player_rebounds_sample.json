@@ -1,0 +1,18 @@
+{
+  "fixture": {
+    "id": "19411867",
+    "participants": [
+      {"participantId": "DET", "name": {"value": "Detroit Pistons"}},
+      {"participantId": "ORL", "name": {"value": "Orlando Magic"}}
+    ],
+    "games": [
+      {
+        "name": {"value": "Player Rebounds"},
+        "results": [
+          {"name": {"value": "Over Cade Cunningham"}, "line": 7.5, "americanOdds": -115},
+          {"name": {"value": "Under Cade Cunningham"}, "line": 7.5, "americanOdds": -105}
+        ]
+      }
+    ]
+  }
+}

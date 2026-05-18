@@ -1,0 +1,17 @@
+{
+  "markets": [
+    {
+      "marketName": "To Score 10+ Points",
+      "eventId": "fd_event_1",
+      "marketId": "901",
+      "runners": [
+        {
+          "runnerName": "Player B",
+          "handicap": 0.0,
+          "result": {"type": "Yes"},
+          "winRunnerOdds": {"americanDisplayOdds": {"americanOddsInt": -120}}
+        }
+      ]
+    }
+  ]
+}

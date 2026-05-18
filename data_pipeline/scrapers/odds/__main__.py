@@ -154,7 +154,12 @@ async def run_moneyline_only(book: str, *, target_date: date, season: str) -> in
     return total_inserted
 
 
-async def run_once(book: str, markets: list[CanonicalMarket]) -> int:
+async def run_once(
+    book: str,
+    markets: list[CanonicalMarket],
+    *,
+    refresh_schedule: bool = True,
+) -> int:
     """Run one-shot scrapes for the selected books and markets.
 
     After collecting player-prop odds the function also runs a moneyline cycle
@@ -163,7 +168,8 @@ async def run_once(book: str, markets: list[CanonicalMarket]) -> int:
     Moneyline odds are stored in ``team_moneyline_odds`` — they never touch
     the player-prop pipeline.
     """
-    await refresh_today_schedule()
+    if refresh_schedule:
+        await refresh_today_schedule()
     loader = OddsLoader()
     moneyline_loader = MoneylineOddsLoader()
     inserted = 0
@@ -173,17 +179,31 @@ async def run_once(book: str, markets: list[CanonicalMarket]) -> int:
             scrapers.append(await stack.enter_async_context(scraper))
         # Phase 1: player props (existing behaviour, unchanged).
         for scraper in scrapers:
-            inserted += await scrape_book_cycle(
-                scraper=scraper,
-                markets=markets,
-                loader=loader,
-                capture_closing_lines=False,
-                closing_only=False,
-            )
+            try:
+                inserted += await scrape_book_cycle(
+                    scraper=scraper,
+                    markets=markets,
+                    loader=loader,
+                    capture_closing_lines=False,
+                    closing_only=False,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "odds_run_once_book_failed",
+                    book=scraper.bookmaker_key,
+                    error=str(exc),
+                )
         # Phase 2: team moneyline odds — no schedule filter here since run_once
         # is called from the daily pipeline which has already refreshed the schedule.
         for scraper in scrapers:
-            inserted += await scrape_moneyline_cycle(scraper=scraper, loader=moneyline_loader)
+            try:
+                inserted += await scrape_moneyline_cycle(scraper=scraper, loader=moneyline_loader)
+            except Exception as exc:
+                logger.warning(
+                    "odds_run_once_moneyline_failed",
+                    book=scraper.bookmaker_key,
+                    error=str(exc),
+                )
     return inserted
 
 
@@ -552,9 +572,20 @@ async def refresh_today_schedule() -> None:
     """Refresh today's NBA schedule so future games can resolve before odds loads."""
     target_date = datetime.now(ZoneInfo("America/New_York")).date()
     season = infer_nba_season(target_date)
-    async with NBAStatsScraper() as scraper:
-        result = await scraper.fetch_scoreboard(season=season, game_date=target_date)
-    summary = NBAStatsLoader().load_scoreboard_schedule(season=season, game_date=target_date)
+    try:
+        async with NBAStatsScraper() as scraper:
+            result = await scraper.fetch_scoreboard(season=season, game_date=target_date)
+        summary = NBAStatsLoader().load_scoreboard_schedule(season=season, game_date=target_date)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "odds_schedule_refresh_failed",
+            season=season,
+            game_date=target_date.isoformat(),
+            error=str(exc),
+            exc_info=True,
+        )
+        return
+
     logger.info(
         "odds_schedule_refreshed",
         season=season,

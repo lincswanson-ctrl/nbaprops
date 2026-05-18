@@ -1,0 +1,45 @@
+{
+  "all_passed": false,
+  "results": [
+    {
+      "name": "migrate_001",
+      "command": [
+        "psycopg",
+        "data_pipeline\\schemas\\001_initial_nba.sql"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "Applied data_pipeline\\schemas\\001_initial_nba.sql in 0.69s",
+      "stderr": ""
+    },
+    {
+      "name": "migrate_002",
+      "command": [
+        "psycopg",
+        "data_pipeline\\schemas\\002_injuries.sql"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "Applied data_pipeline\\schemas\\002_injuries.sql in 0.62s",
+      "stderr": ""
+    },
+    {
+      "name": "scrape_nba",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.scrapers.nba_stats",
+        "--season",
+        "2025-26",
+        "--endpoint",
+        "all",
+        "--max-games",
+        "40"
+      ],
+      "returncode": 124,
+      "passed": false,
+      "stdout": "kv2?GameID=0022500010 \"HTTP/1.1 500 Internal Server Error\"\n{\"endpoint\": \"boxscoreplayertrackv2\", \"status_code\": 500, \"latency_ms\": 27, \"response_size\": 0, \"params\": {\"GameID\": \"0022500010\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:25:57.363964Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreplayertrackv2?GameID=0022500010 \"HTTP/1.1 500 Internal Server Error\"\n{\"endpoint\": \"boxscoreplayertrackv2\", \"status_code\": 500, \"latency_ms\": 28, \"response_size\": 0, \"params\": {\"GameID\": \"0022500010\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:26:02.252412Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreplayertrackv2?GameID=0022500010 \"HTTP/1.1 500 Internal Server Error\"\n{\"endpoint\": \"boxscoreplayertrackv2\", \"status_code\": 500, \"latency_ms\": 123, \"response_size\": 0, \"params\": {\"GameID\": \"0022500010\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:26:10.864522Z\"}\n{\"endpoint\": \"boxscoreplayertrackv2\", \"game_id\": \"0022500010\", \"season\": \"2025-26\", \"error\": \"Server error '500 Internal Server Error' for url 'https://stats.nba.com/stats/boxscoreplayertrackv2?GameID=0022500010'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500\", \"event\": \"nba_stats_non_blocking_endpoint_failed\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:26:10.864787Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500011 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 90, \"response_size\": 6089, \"params\": {\"GameID\": \"0022500011\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:26:12.836020Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500011 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 104, \"response_size\": 2, \"params\": {\"GameID\": \"0022500011\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:26:14.850740Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreplayertrackv2?GameID=0022500011 \"HTTP/1.1 500 Internal Server Error\"\n{\"endpoint\": \"boxscoreplayertrackv2\", \"status_code\": 500, \"latency_ms\": 73, \"response_size\": 0, \"params\": {\"GameID\": \"0022500011\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:26:16.822977Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscorematchupsv3?GameID=0022500011 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscorematchupsv3\", \"status_code\": 200, \"latency_ms\": 79, \"response_size\": 170016, \"params\": {\"GameID\": \"0022500011\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:26:18.830382Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreplayertrackv2?GameID=0022500011 \"HTTP/1.1 500 Internal Server Error\"\n{\"endpoint\": \"boxscoreplayertrackv2\", \"status_code\": 500, \"latency_ms\": 100, \"response_size\": 0, \"params\": {\"GameID\": \"0022500011\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:26:20.862859Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreplayertrackv2?GameID=0022500011 \"HTTP/1.1 500 Internal Server Error\"\n{\"endpoint\": \"boxscoreplayertrackv2\", \"status_code\": 500, \"latency_ms\": 27, \"response_size\": 0, \"params\": {\"GameID\": \"0022500011\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:26:23.873827Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreplayertrackv2?GameID=0022500011 \"HTTP/1.1 500 Internal Server Error\"\n{\"endpoint\": \"boxscoreplayertrackv2\", \"status_code\": 500, \"latency_ms\": 27, \"response_size\": 0, \"params\": {\"GameID\": \"0022500011\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:26:28.425728Z\"}\n",
+      "stderr": "Timed out after 300s: C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m data_pipeline.scrapers.nba_stats --season 2025-26 --endpoint all --max-games 40"
+    }
+  ]
+}

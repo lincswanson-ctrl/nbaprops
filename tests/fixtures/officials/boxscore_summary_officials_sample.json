@@ -1,0 +1,18 @@
+{
+  "resultSets": [
+    {
+      "name": "GameSummary",
+      "headers": ["GAME_ID"],
+      "rowSet": [["0022500001"]]
+    },
+    {
+      "name": "Officials",
+      "headers": ["OFFICIAL_ID", "FIRST_NAME", "LAST_NAME", "JERSEY_NUM"],
+      "rowSet": [
+        [114, "Scott", "Foster", "48"],
+        [225, "James", "Capers", "19"],
+        [311, "Mark", "Lindsay", "29"]
+      ]
+    }
+  ]
+}

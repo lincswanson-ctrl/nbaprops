@@ -1,0 +1,18 @@
+{
+  "fixture": {
+    "id": "123456",
+    "participants": [
+      {"participantId": "p1", "name": {"value": "Detroit Pistons"}},
+      {"participantId": "p2", "name": {"value": "Orlando Magic"}}
+    ],
+    "games": [
+      {
+        "name": {"value": "Moneyline"},
+        "results": [
+          {"playerId": "p1", "americanOdds": 125},
+          {"playerId": "p2", "americanOdds": -145}
+        ]
+      }
+    ]
+  }
+}

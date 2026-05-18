@@ -1,0 +1,9 @@
+{
+  "resultSets": [
+    {
+      "name": "LeagueDashPlayerStats",
+      "headers": ["PLAYER_ID", "GP", "PTS"],
+      "rowSet": [[203507, 1, 24.0]]
+    }
+  ]
+}

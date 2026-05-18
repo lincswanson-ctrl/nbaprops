@@ -1,0 +1,176 @@
+{
+  "all_passed": false,
+  "results": [
+    {
+      "name": "migrate_001",
+      "command": [
+        "psycopg",
+        "data_pipeline\\schemas\\001_initial_nba.sql"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "Applied data_pipeline\\schemas\\001_initial_nba.sql in 0.69s",
+      "stderr": ""
+    },
+    {
+      "name": "migrate_002",
+      "command": [
+        "psycopg",
+        "data_pipeline\\schemas\\002_injuries.sql"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "Applied data_pipeline\\schemas\\002_injuries.sql in 0.61s",
+      "stderr": ""
+    },
+    {
+      "name": "scrape_nba",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.scrapers.nba_stats",
+        "--season",
+        "2025-26",
+        "--endpoint",
+        "core",
+        "--max-games",
+        "8",
+        "--core-only"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "665919Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500003 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 105, \"response_size\": 2, \"params\": {\"GameID\": \"0022500003\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:58:48.623360Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500004 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 99, \"response_size\": 5583, \"params\": {\"GameID\": \"0022500004\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:58:50.621026Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500004 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 100, \"response_size\": 2, \"params\": {\"GameID\": \"0022500004\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:58:52.631873Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500005 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 129, \"response_size\": 5356, \"params\": {\"GameID\": \"0022500005\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:58:54.663930Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500005 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 112, \"response_size\": 2, \"params\": {\"GameID\": \"0022500005\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:58:56.651668Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500006 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 101, \"response_size\": 6143, \"params\": {\"GameID\": \"0022500006\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:58:58.647443Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500006 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 101, \"response_size\": 2, \"params\": {\"GameID\": \"0022500006\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:59:00.650594Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500007 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 117, \"response_size\": 5305, \"params\": {\"GameID\": \"0022500007\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:59:02.680108Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500007 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 158, \"response_size\": 2, \"params\": {\"GameID\": \"0022500007\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:59:04.721825Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoretraditionalv2?GameID=0022500008 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoretraditionalv2\", \"status_code\": 200, \"latency_ms\": 98, \"response_size\": 5815, \"params\": {\"GameID\": \"0022500008\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:59:06.672966Z\"}\nHTTP Request: GET https://stats.nba.com/stats/boxscoreadvancedv2?GameID=0022500008 \"HTTP/1.1 200 OK\"\n{\"endpoint\": \"boxscoreadvancedv2\", \"status_code\": 200, \"latency_ms\": 104, \"response_size\": 2, \"params\": {\"GameID\": \"0022500008\"}, \"event\": \"nba_stats_request\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:59:08.688569Z\"}\n{\"season\": \"2025-26\", \"endpoint\": \"core\", \"event\": \"nba_stats_scrape_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T03:59:08.690031Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "load_nba",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.loaders.nba_stats",
+        "--season",
+        "2025-26"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"season\": \"2025-26\", \"game_date\": \"2026-05-01\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:59:09.216851Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-03\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:59:09.217039Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-04\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:59:09.217164Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-05\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:59:09.217272Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-06\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:59:09.217377Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-07\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:59:09.217483Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-08\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:59:09.217583Z\"}\n{\"season\": \"2025-26\", \"game_date\": \"2026-05-09\", \"event\": \"scoreboard_raw_missing\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T03:59:09.217682Z\"}\n{\"season\": \"2025-26\", \"games_upserted\": 165, \"event\": \"nba_stats_load_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:02.986263Z\"}\n",
+      "stderr": "Exception ignored while calling deallocator <function ConnectionPool.__del__ at 0x000002076956A4B0>:\nTraceback (most recent call last):\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\pool.py\", line 126, in __del__\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\_acompat.py\", line 152, in gather\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\threading.py\", line 1133, in join\nPythonFinalizationError: cannot join thread at interpreter shutdown\n"
+    },
+    {
+      "name": "validate_nba",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/validate_nba_load.py"
+      ],
+      "returncode": 1,
+      "passed": false,
+      "stdout": "mestamp\": \"2026-05-09T04:04:05.896384Z\"}\n{\"game_id\": \"0022500020\", \"expected_home\": 108, \"expected_away\": 128, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896428Z\"}\n{\"game_id\": \"0022500770\", \"expected_home\": 135, \"expected_away\": 118, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896475Z\"}\n{\"game_id\": \"0022400802\", \"expected_home\": 110, \"expected_away\": 125, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896515Z\"}\n{\"game_id\": \"0022501211\", \"expected_home\": 115, \"expected_away\": 105, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896554Z\"}\n{\"game_id\": \"0022400556\", \"expected_home\": 122, \"expected_away\": 117, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896593Z\"}\n{\"game_id\": \"0022500172\", \"expected_home\": 114, \"expected_away\": 103, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896633Z\"}\n{\"game_id\": \"0022500364\", \"expected_home\": 116, \"expected_away\": 105, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896671Z\"}\n{\"game_id\": \"0022400003\", \"expected_home\": 114, \"expected_away\": 89, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896711Z\"}\n{\"game_id\": \"0022401205\", \"expected_home\": 123, \"expected_away\": 99, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896752Z\"}\n{\"game_id\": \"0022400860\", \"expected_home\": 100, \"expected_away\": 113, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896791Z\"}\n{\"game_id\": \"0022400166\", \"expected_home\": 121, \"expected_away\": 119, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896830Z\"}\n{\"game_id\": \"0022500244\", \"expected_home\": 115, \"expected_away\": 113, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896869Z\"}\n{\"game_id\": \"0022401107\", \"expected_home\": 143, \"expected_away\": 105, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896907Z\"}\n{\"game_id\": \"0022400655\", \"expected_home\": 129, \"expected_away\": 121, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896946Z\"}\n{\"game_id\": \"0022500409\", \"expected_home\": 126, \"expected_away\": 109, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.896985Z\"}\n{\"game_id\": \"0022500481\", \"expected_home\": 122, \"expected_away\": 121, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.897025Z\"}\n{\"game_id\": \"0022500416\", \"expected_home\": 115, \"expected_away\": 104, \"actual_home\": 0, \"actual_away\": 0, \"event\": \"nba_load_validation_mismatch\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:05.897063Z\"}\n",
+      "stderr": "Exception ignored while calling deallocator <function ConnectionPool.__del__ at 0x000001F49BC5BAB0>:\nTraceback (most recent call last):\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\pool.py\", line 126, in __del__\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\_acompat.py\", line 152, in gather\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\threading.py\", line 1133, in join\nPythonFinalizationError: cannot join thread at interpreter shutdown\n"
+    },
+    {
+      "name": "validate_bref",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/validate_nba_vs_bref.py",
+        "--season",
+        "2024-25"
+      ],
+      "returncode": 1,
+      "passed": false,
+      "stdout": "{\"season\": \"2024-25\", \"checked\": 1, \"mismatches\": 1, \"event\": \"bref_validation_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:07.786332Z\"}\n",
+      "stderr": "Exception ignored while calling deallocator <function ConnectionPool.__del__ at 0x000001EC31FCBCC0>:\nTraceback (most recent call last):\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\pool.py\", line 126, in __del__\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\_acompat.py\", line 152, in gather\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\threading.py\", line 1133, in join\nPythonFinalizationError: cannot join thread at interpreter shutdown\n"
+    },
+    {
+      "name": "scrape_injuries",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.scrapers.injuries",
+        "--source",
+        "all",
+        "--once"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "HTTP Request: GET https://www.rotowire.com/basketball/nba-lineups.php \"HTTP/1.1 200 OK\"\n{\"source\": \"rotowire\", \"fallback\": \"playwright_required\", \"event\": \"injury_cloudflare_detected\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:09.052190Z\"}\n{\"source\": \"rotowire\", \"records\": 0, \"event\": \"injury_scrape_snapshot\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:09.057661Z\"}\nHTTP Request: GET https://site.api.espn.com/apis/site/v2/sports/basketball/nba/news \"HTTP/1.1 200 OK\"\n{\"source\": \"espn\", \"records\": 0, \"event\": \"injury_scrape_snapshot\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:09.455657Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "load_injury_rw",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.loaders.injuries",
+        "--source",
+        "rotowire"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"source\": \"rotowire\", \"total_records\": 0, \"inserted\": 0, \"deduped\": 0, \"unresolved_names\": 0, \"unmapped_statuses\": 0, \"event\": \"injury_load_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:11.529532Z\"}\n",
+      "stderr": "Exception ignored while calling deallocator <function ConnectionPool.__del__ at 0x000001E8506461F0>:\nTraceback (most recent call last):\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\pool.py\", line 126, in __del__\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\_acompat.py\", line 152, in gather\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\threading.py\", line 1133, in join\nPythonFinalizationError: cannot join thread at interpreter shutdown\n"
+    },
+    {
+      "name": "load_injury_es",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "data_pipeline.loaders.injuries",
+        "--source",
+        "espn"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"source\": \"espn\", \"total_records\": 0, \"inserted\": 0, \"deduped\": 0, \"unresolved_names\": 0, \"unmapped_statuses\": 0, \"event\": \"injury_load_complete\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:12.766447Z\"}\n",
+      "stderr": "Exception ignored while calling deallocator <function ConnectionPool.__del__ at 0x00000144553561F0>:\nTraceback (most recent call last):\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\pool.py\", line 126, in __del__\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\_acompat.py\", line 152, in gather\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\threading.py\", line 1133, in join\nPythonFinalizationError: cannot join thread at interpreter shutdown\n"
+    },
+    {
+      "name": "validate_injuries",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/validate_injury_sources.py",
+        "--min-shared-players",
+        "20"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"timestamp\": \"2026-05-09T04:04:14.290679Z\", \"total_players\": 5, \"disagreements\": 3, \"disagreement_rate\": 60.0, \"event\": \"injury_source_validation\", \"logger\": \"__main__\", \"level\": \"info\"}\n{\"player_name\": \"Anthony Edwards\", \"rotowire_status\": \"unknown\", \"espn_status\": \"available\", \"rotowire_ts\": \"2026-05-08 08:16:29.168009+00:00\", \"espn_ts\": \"2026-05-06 01:19:29.241954+00:00\", \"event\": \"injury_source_disagreement_player\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:14.290867Z\"}\n{\"player_name\": \"Ayo Dosunmu\", \"rotowire_status\": \"unknown\", \"espn_status\": \"out\", \"rotowire_ts\": \"2026-05-08 08:16:29.168009+00:00\", \"espn_ts\": \"2026-05-01 05:03:29+00:00\", \"event\": \"injury_source_disagreement_player\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:14.290941Z\"}\n{\"player_name\": \"Joel Embiid\", \"rotowire_status\": \"unknown\", \"espn_status\": \"out\", \"rotowire_ts\": \"2026-05-08 08:16:29.168009+00:00\", \"espn_ts\": \"2026-05-07 07:29:21.558564+00:00\", \"event\": \"injury_source_disagreement_player\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:14.290994Z\"}\n{\"rotowire_only_count\": 21, \"espn_only_count\": 3, \"event\": \"injury_source_one_sided\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:14.291039Z\"}\n{\"total_players\": 5, \"min_shared_players\": 20, \"event\": \"injury_source_validation_low_sample\", \"logger\": \"__main__\", \"level\": \"warning\", \"timestamp\": \"2026-05-09T04:04:14.291084Z\"}\n",
+      "stderr": "Exception ignored while calling deallocator <function ConnectionPool.__del__ at 0x000001F87580BCC0>:\nTraceback (most recent call last):\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\pool.py\", line 126, in __del__\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\_acompat.py\", line 152, in gather\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\threading.py\", line 1133, in join\nPythonFinalizationError: cannot join thread at interpreter shutdown\n"
+    },
+    {
+      "name": "readiness",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "scripts/readiness_checks.py",
+        "--min-games",
+        "1000",
+        "--min-players",
+        "450",
+        "--min-player-game-stats",
+        "50000",
+        "--min-injury-rows",
+        "50",
+        "--max-raw-age-minutes",
+        "180",
+        "--max-injury-disagreement-pct",
+        "100"
+      ],
+      "returncode": 0,
+      "passed": true,
+      "stdout": "{\"name\": \"games_minimum_rows\", \"passed\": true, \"details\": \"count=2527 threshold=1000\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:17.504602Z\"}\n{\"name\": \"players_minimum_rows\", \"passed\": true, \"details\": \"count=688 threshold=450\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:17.504780Z\"}\n{\"name\": \"player_game_stats_minimum_rows\", \"passed\": true, \"details\": \"count=54330 threshold=50000\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:17.504853Z\"}\n{\"name\": \"injury_status_minimum_rows\", \"passed\": true, \"details\": \"count=84 threshold=50\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:17.504906Z\"}\n{\"name\": \"nba_stats_freshness\", \"passed\": true, \"details\": \"latest=0022500008.json age_minutes=5.13\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:17.504949Z\"}\n{\"name\": \"injuries_rotowire_freshness\", \"passed\": true, \"details\": \"latest=20260509T040409Z.html age_minutes=0.12\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:17.504991Z\"}\n{\"name\": \"injuries_espn_freshness\", \"passed\": true, \"details\": \"latest=20260509T040409Z.json age_minutes=0.11\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:17.505032Z\"}\n{\"name\": \"injury_source_disagreement\", \"passed\": true, \"details\": \"total=5 disagreements=3 rate=60.0 threshold=100.0\", \"event\": \"readiness_check\", \"logger\": \"__main__\", \"level\": \"info\", \"timestamp\": \"2026-05-09T04:04:17.505071Z\"}\n",
+      "stderr": "Exception ignored while calling deallocator <function ConnectionPool.__del__ at 0x00000264F52C5850>:\nTraceback (most recent call last):\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\pool.py\", line 126, in __del__\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\psycopg_pool\\_acompat.py\", line 152, in gather\n  File \"C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\threading.py\", line 1133, in join\nPythonFinalizationError: cannot join thread at interpreter shutdown\n"
+    },
+    {
+      "name": "tests",
+      "command": [
+        "C:\\Users\\lincs\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "returncode": 2,
+      "passed": false,
+      "stdout": "\n=================================== ERRORS ====================================\n_______________ ERROR collecting tests/unit/betting/test_vig.py _______________\nImportError while importing test module 'C:\\Users\\lincs\\nbaprops\\tests\\unit\\betting\\test_vig.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n..\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\unit\\betting\\test_vig.py:7: in <module>\n    from betting.vig import (\nE   ModuleNotFoundError: No module named 'betting.vig'\n=========================== short test summary info ===========================\nERROR tests/unit/betting/test_vig.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.66s\n",
+      "stderr": ""
+    }
+  ]
+}

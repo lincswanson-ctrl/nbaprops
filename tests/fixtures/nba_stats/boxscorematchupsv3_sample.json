@@ -1,0 +1,9 @@
+{
+  "resultSets": [
+    {
+      "name": "GameMatchups",
+      "headers": ["GAME_ID", "PLAYER_ID", "MATCHUP_MIN"],
+      "rowSet": [["0022400001", 203507, 18.2]]
+    }
+  ]
+}

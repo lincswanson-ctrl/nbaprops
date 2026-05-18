@@ -1,0 +1,9 @@
+{
+  "resultSets": [
+    {
+      "name": "PlayerStats",
+      "headers": ["PLAYER_ID", "USG_PCT", "TS_PCT", "PACE"],
+      "rowSet": [[203507, 0.278, 0.612, 99.5]]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "resultSets": [
+    {
+      "name": "GameHeader",
+      "headers": [
+        "GAME_ID",
+        "GAME_DATE_EST",
+        "HOME_TEAM_ID",
+        "VISITOR_TEAM_ID",
+        "PTS_HOME",
+        "PTS_AWAY"
+      ],
+      "rowSet": [
+        ["0022400001", "2024-10-22T00:00:00", 1610612737, 1610612738, 110, 101]
+      ]
+    },
+    {
+      "name": "LineScore",
+      "headers": ["GAME_ID", "TEAM_ID", "TEAM_ABBREVIATION", "TEAM_NAME"],
+      "rowSet": [
+        ["0022400001", 1610612737, "ATL", "Hawks"],
+        ["0022400001", 1610612738, "BOS", "Celtics"]
+      ]
+    }
+  ]
+}

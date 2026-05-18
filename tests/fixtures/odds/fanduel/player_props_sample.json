@@ -1,0 +1,28 @@
+{
+  "events": [
+    {
+      "eventId": "fd_event_1",
+      "name": "Detroit Pistons @ Orlando Magic",
+      "openDate": "2026-05-09T23:00:00Z"
+    }
+  ],
+  "markets": [
+    {
+      "marketName": "Player Points",
+      "runners": [
+        {
+          "runnerName": "Cade Cunningham",
+          "handicap": 25.5,
+          "result": {"type": "Over"},
+          "winRunnerOdds": {"americanDisplayOdds": {"americanOdds": -105}}
+        },
+        {
+          "runnerName": "Cade Cunningham",
+          "handicap": 25.5,
+          "result": {"type": "Under"},
+          "winRunnerOdds": {"americanDisplayOdds": {"americanOdds": -115}}
+        }
+      ]
+    }
+  ]
+}

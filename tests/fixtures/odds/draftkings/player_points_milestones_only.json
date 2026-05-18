@@ -1,0 +1,27 @@
+{
+  "events": [
+    {
+      "eventId": "dk_event_1",
+      "teamName1": "Detroit Pistons",
+      "teamName2": "Orlando Magic",
+      "startDate": "2026-05-09T23:00:00Z"
+    }
+  ],
+  "markets": [
+    {
+      "id": "m_ms",
+      "eventId": "dk_event_1",
+      "marketType": {"id": "12189", "name": "Points Milestones"}
+    }
+  ],
+  "selections": [
+    {
+      "label": "10+",
+      "milestoneValue": 10,
+      "marketId": "m_ms",
+      "points": 10,
+      "displayOdds": {"american": -130},
+      "participants": [{"name": "LeBron James"}]
+    }
+  ]
+}

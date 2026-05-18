@@ -9,12 +9,11 @@ import pandas as pd
 import streamlit as st
 
 from dashboard.components import KPI, kpi_row, page_header
-from dashboard.data import (
-    latest_edge_date,
-    load_all_filtered_player_prop_edges,
-    load_today_edges,
-    official_card_research_lab_edges,
-    rejected_filter_edges,
+from dashboard.queries import (
+    get_available_pick_dates,
+    get_edges,
+    get_picks,
+    get_rejected_edges,
 )
 from dashboard.formatting import display_market, pct
 from dashboard.pages.today import _edges_frame, _render_edge_detail
@@ -23,12 +22,12 @@ from dashboard.pages.today import _edges_frame, _render_edge_detail
 def render() -> None:
     """Render research / debug edge views."""
     selected_date = _render_top_controls()
-    all_filtered = load_all_filtered_player_prop_edges(selected_date)
-    raw_edges = load_today_edges(selected_date)
-    official_picks = official_card_research_lab_edges(all_filtered)
-    rejected = rejected_filter_edges(all_filtered)
+    raw_edges = get_edges(selected_date)
+    official_picks = get_picks(selected_date)
+    all_filtered = raw_edges
+    rejected = get_rejected_edges(selected_date)
 
-    page_header("Research Lab", subtitle=f"Date: {selected_date}")
+    page_header("Research Lab", subtitle=f"Date: {selected_date.isoformat()}")
     kpi_row(
         [
             KPI("Raw edges", str(len(raw_edges))),
@@ -70,13 +69,17 @@ def render() -> None:
                     _render_edge_detail(edge)
 
 
-def _render_top_controls() -> str:
+def _render_top_controls() -> date:
+    dates = get_available_pick_dates()
+    default_date = date.today()
+    if dates and default_date not in dates:
+        default_date = dates[0]
     selected = st.date_input(
         "Date",
-        value=date.fromisoformat(latest_edge_date()),
-        help="Pick a saved edge artifact date.",
+        value=default_date,
+        help="Pick a date with generated picks/edges.",
     )
-    return selected.isoformat()
+    return selected
 
 
 def _rejected_edges_frame(edges: list[dict[str, Any]]) -> pd.DataFrame:

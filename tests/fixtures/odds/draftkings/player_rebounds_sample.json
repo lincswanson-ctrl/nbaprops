@@ -1,0 +1,24 @@
+{
+  "events": [
+    {
+      "eventId": "dk_event_1",
+      "teamName1": "Detroit Pistons",
+      "teamName2": "Orlando Magic",
+      "startDate": "2026-05-09T23:00:00Z"
+    }
+  ],
+  "selections": [
+    {
+      "label": "Over Cade Cunningham",
+      "points": 7.5,
+      "displayOdds": {"american": -115},
+      "participants": [{"name": "Cade Cunningham"}]
+    },
+    {
+      "label": "Under Cade Cunningham",
+      "points": 7.5,
+      "displayOdds": {"american": -105},
+      "participants": [{"name": "Cade Cunningham"}]
+    }
+  ]
+}

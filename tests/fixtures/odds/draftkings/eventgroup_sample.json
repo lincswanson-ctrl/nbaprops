@@ -1,0 +1,11 @@
+{
+  "leagueId": 42648,
+  "events": [
+    {
+      "eventId": "dk_event_1",
+      "teamName1": "Detroit Pistons",
+      "teamName2": "Orlando Magic",
+      "startDate": "2026-05-09T23:00:00Z"
+    }
+  ]
+}

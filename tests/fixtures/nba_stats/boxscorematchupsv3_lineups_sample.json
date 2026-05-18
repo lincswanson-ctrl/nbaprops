@@ -1,0 +1,25 @@
+{
+  "resultSets": [
+    {
+      "name": "GameMatchups",
+      "headers": [
+        "GAME_ID",
+        "PERIOD",
+        "TEAM_ID",
+        "START_SECONDS",
+        "END_SECONDS",
+        "PLAYER1_ID",
+        "PLAYER2_ID",
+        "PLAYER3_ID",
+        "PLAYER4_ID",
+        "PLAYER5_ID",
+        "POSSESSIONS",
+        "POINTS_FOR",
+        "PTS_AGAINST"
+      ],
+      "rowSet": [
+        ["0022400001", 1, 1610612737, 0, 360, 1, 2, 3, 4, 5, 12, 28, 25]
+      ]
+    }
+  ]
+}
