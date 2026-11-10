@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import streamlit as st
 
-from dashboard.pages import card_history, daily_log, health, history, research_lab, team_moneyline, today
+from dashboard.pages import (
+    backtest,
+    card_history,
+    daily_log,
+    health,
+    history,
+    research_lab,
+    team_moneyline,
+    today,
+)
 
 st.set_page_config(page_title="NBA Props", layout="wide", initial_sidebar_state="expanded")
 
@@ -12,6 +21,7 @@ _NAV = {
     "Today's Card": today.render,
     "Research Lab": research_lab.render,
     "Performance": history.render,
+    "Backtest": backtest.render,
     "Daily Log": daily_log.render,
     "Pipeline Health": health.render,
     "Team Moneyline": team_moneyline.render,
