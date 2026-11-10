@@ -55,8 +55,7 @@ where it doesn't.
 
 ## Open Decisions for Lincoln
 
-1. **Live default weight.** `config/blend_weights.yaml` ships `default: 0.25`, an unfitted
-   placeholder chosen to be conservative (it shrinks claimed edges about 4×, so most current
-   picks fall under the thresholds). Replace with a fitted file once enough closing lines
-   exist; or set 0.0 (no picks) until then?
+1. ~~Live default weight~~ — decided 2026-11-10: `config/blend_weights.yaml` ships
+   `default: 0.0` (market only, so **no picks**) until weights are fitted on real closing
+   lines with `--mode fit-blend` and reviewed.
 2. `MIN_BLEND_FIT_SAMPLES = 200` per market.

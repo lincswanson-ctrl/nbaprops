@@ -59,11 +59,13 @@ Different sources use different language. Normalize to this exact set in the DB:
 | Normalized | Source language examples |
 |---|---|
 | `out` | "Out", "OUT", "Inactive", "Will not play" |
-| `doubtful` | "Doubtful", "DTD", "Day-to-day (doubtful)" |
-| `questionable` | "Questionable", "GTD", "Game-time decision" |
+| `doubtful` | "Doubtful", "Day-to-day (doubtful)" |
+| `questionable` | "Questionable", "GTD", "Game-time decision", "DTD", "Day-To-Day" |
 | `probable` | "Probable", "Expected to play" |
 | `available` | (no listing, or "Active", "Available") — only logged when transitioning FROM another status |
 | `unknown` | source string did not match any known pattern |
+
+_Revised 2026-11-10 (Lincoln): plain "DTD"/"Day-To-Day" moved from `doubtful` to `questionable`. On the live 2026-11-10 pages ESPN's "Day-To-Day" players were Rotowire "Ques", so mapping them to `doubtful` made the pessimistic cross-source rule downgrade questionable players. An explicit "(doubtful)" qualifier still maps to `doubtful` via the regex fallback._
 
 Status mapping is in `loaders/injury_status_mapping.py` as a dict, with regex fallbacks. Unmatched strings log `unknown` and write a warning so we can extend the mapping.
 

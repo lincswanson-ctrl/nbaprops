@@ -88,5 +88,5 @@ re-derive thresholds from realized ROI by edge bucket.
 
 1. Proxy line = last-10 average. Alternatives: last-5, or season-to-date.
 2. Flat 1-unit staking only; Kelly sizing (`betting/sizing.py` in ARCHITECTURE) later?
-3. The committed `data/backtest/summary_2024-25.json` / `bankroll_2024-25.json` are
-   placeholders ("Player A" era, round numbers), not real results. Delete them?
+3. ~~Placeholder `data/backtest/*_2024-25.json`~~ — deleted 2026-11-10 (they were not real
+   results).
