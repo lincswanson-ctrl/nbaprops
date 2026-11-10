@@ -67,7 +67,7 @@ class StepResult:
 
 def run_ingest(target_date: date, season: str) -> StepResult:
     """Run existing NBA/injury scrape+load components for the target date."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     games_loaded = _ingest_nba_schedule(target_date, season)
     injury_records = _ingest_injuries()
     with get_connection() as conn:
@@ -339,7 +339,7 @@ def run_odds(
     books: tuple[str, ...] = ("all",),
 ) -> StepResult:
     """Scrape odds, stage raw odds rows, and build normalized market rows."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     used_csv_fallback = False
     try:
         _scrape_player_prop_odds(target_date, season, books=books)
@@ -596,7 +596,7 @@ def _upsert_normalized_row(
 
 def run_features(target_date: date, season: str) -> StepResult:
     """Compute deterministic game-level feature rows."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     del season
     feature_count, names = _build_features_for_date(target_date)
     if _count_games_for_date(target_date) > 0 and feature_count == 0:
@@ -860,7 +860,7 @@ def run_model(target_date: date, season: str) -> StepResult:
     ``PREGAME_MODEL_VERSION=baseline_v1`` (default, spec 05) projects each player's stat
     distribution and prices the actual line; ``naive_v1`` is the legacy placeholder.
     """
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     if get_settings().pregame_model_version == BASELINE_MODEL_VERSION:
         return _run_baseline_model(target_date)
     return _run_naive_model(target_date, season)
@@ -1099,7 +1099,7 @@ def _run_naive_model(target_date: date, season: str) -> StepResult:
 
 def run_edge_selection(target_date: date, season: str) -> StepResult:
     """Compute edges and materialize active picks above threshold."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     del season
     edges_total = 0
     picks_total = 0
@@ -1317,7 +1317,7 @@ def _side_for_row(row: dict[str, Any]) -> SideDecision:
 
 def run_validation(target_date: date, season: str) -> StepResult:
     """Run strict validation gates and raise on failures."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     del season
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -1456,7 +1456,7 @@ def run_validation(target_date: date, season: str) -> StepResult:
 
 def run_summary(target_date: date, season: str) -> StepResult:
     """Build and log summary values for the run."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     del season
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -1588,157 +1588,143 @@ def _grade_pick(edge: float, rank_idx: int, total: int, market: str) -> tuple[st
     return grade, reason
 
 
-def _ensure_pregame_tables() -> None:
-    """Create required pregame pipeline tables if they do not exist."""
+# Columns and unique indexes the pregame steps rely on. Created by migrations
+# 005_pregame_pipeline.sql, 006_under_prices.sql and 007_pregame_schema_reconcile.sql.
+PREGAME_REQUIRED_COLUMNS: dict[str, frozenset[str]] = {
+    "odds": frozenset(
+        {"game_id", "player_id", "market", "book", "line", "price", "under_price", "odds_timestamp"}
+    ),
+    "odds_normalized": frozenset(
+        {
+            "game_id",
+            "player_id",
+            "market",
+            "consensus_line",
+            "consensus_price",
+            "fair_prob",
+            "best_book",
+            "best_price",
+            "best_under_book",
+            "best_under_price",
+            "vig_removed",
+            "odds_asof",
+            "generated_at",
+        }
+    ),
+    "features": frozenset({"game_id", "player_id", "feature_name", "value", "generated_at"}),
+    "model_scores": frozenset(
+        {
+            "game_id",
+            "player_id",
+            "market",
+            "model_prob",
+            "model_line",
+            "market_book",
+            "market_price",
+            "odds_asof",
+            "scored_at",
+            "model_version",
+        }
+    ),
+    "edges": frozenset(
+        {
+            "game_id",
+            "player_id",
+            "market",
+            "side",
+            "model_prob",
+            "market_prob",
+            "edge_pct",
+            "market_book",
+            "market_price",
+            "decision",
+            "rejection_reason",
+            "scored_at",
+            "model_version",
+        }
+    ),
+    "picks": frozenset(
+        {
+            "pick_id",
+            "game_id",
+            "player_id",
+            "game_date",
+            "market",
+            "side",
+            "line",
+            "book",
+            "price",
+            "edge_pct",
+            "confidence",
+            "grade",
+            "grade_reason",
+            "status",
+            "model_version",
+            "created_at",
+        }
+    ),
+}
+PREGAME_REQUIRED_UNIQUE_INDEXES = frozenset(
+    {
+        "ux_odds_normalized_game_player_market",
+        "ux_model_scores_game_player_market_scored",
+        "ux_edges_game_player_market_side_scored",
+        "ux_features_game_player_feature_generated",
+    }
+)
+PREGAME_MIGRATIONS_HINT = (
+    "apply data_pipeline/schemas/005_pregame_pipeline.sql, 006_under_prices.sql and "
+    "007_pregame_schema_reconcile.sql (scripts/go_no_go.py applies them)"
+)
+_pregame_schema_verified = False
+
+
+def missing_pregame_schema(columns: dict[str, set[str]], indexes: set[str]) -> list[str]:
+    """List required tables, columns and unique indexes absent from the database.
+
+    Args:
+        columns: Existing columns per table (tables absent from the dict don't exist).
+        indexes: Existing index names.
+
+    Returns:
+        Human-readable items such as ``"odds.under_price"``; empty when the schema is complete.
+    """
+    missing: list[str] = []
+    for table, required in PREGAME_REQUIRED_COLUMNS.items():
+        if table not in columns:
+            missing.append(f"table {table}")
+            continue
+        missing.extend(f"{table}.{col}" for col in sorted(required - columns[table]))
+    missing.extend(f"index {name}" for name in sorted(PREGAME_REQUIRED_UNIQUE_INDEXES - indexes))
+    return missing
+
+
+def _require_pregame_schema() -> None:
+    """Fail fast if migrations 005-007 are not applied. Read-only: never issues DDL.
+
+    Raises:
+        RuntimeError: Naming every missing table, column or index.
+    """
+    global _pregame_schema_verified
+    if _pregame_schema_verified:
+        return
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                CREATE TABLE IF NOT EXISTS odds (
-                    id BIGSERIAL PRIMARY KEY,
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    market TEXT NOT NULL,
-                    book TEXT NOT NULL,
-                    line NUMERIC NOT NULL,
-                    price INT NOT NULL,
-                    odds_timestamp TIMESTAMPTZ NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                )
-                """
+                SELECT table_name, column_name FROM information_schema.columns
+                WHERE table_schema = current_schema() AND table_name = ANY(%(t)s)
+                """,
+                {"t": list(PREGAME_REQUIRED_COLUMNS)},
             )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS odds_normalized (
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    market TEXT NOT NULL,
-                    consensus_line NUMERIC NOT NULL,
-                    consensus_price NUMERIC NOT NULL,
-                    fair_prob NUMERIC NOT NULL,
-                    best_book TEXT,
-                    best_price INT,
-                    odds_asof TIMESTAMPTZ,
-                    generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    PRIMARY KEY (game_id, player_id, market)
-                )
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS features (
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    feature_name TEXT NOT NULL,
-                    value NUMERIC NOT NULL,
-                    generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    PRIMARY KEY (game_id, player_id, feature_name, generated_at)
-                )
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS model_scores (
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    market TEXT NOT NULL,
-                    model_prob NUMERIC NOT NULL,
-                    model_line NUMERIC,
-                    market_book TEXT,
-                    market_price INT,
-                    odds_asof TIMESTAMPTZ,
-                    scored_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    model_version TEXT NOT NULL,
-                    PRIMARY KEY (game_id, player_id, market, scored_at)
-                )
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS edges (
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    market TEXT NOT NULL,
-                    side TEXT NOT NULL,
-                    model_prob NUMERIC NOT NULL,
-                    market_prob NUMERIC NOT NULL,
-                    edge_pct NUMERIC NOT NULL,
-                    market_book TEXT,
-                    market_price INT,
-                    decision TEXT,
-                    rejection_reason TEXT,
-                    scored_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    model_version TEXT NOT NULL,
-                    PRIMARY KEY (game_id, player_id, market, side, scored_at)
-                )
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS picks (
-                    pick_id BIGSERIAL PRIMARY KEY,
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    game_date DATE NOT NULL,
-                    market TEXT NOT NULL,
-                    side TEXT NOT NULL,
-                    line NUMERIC,
-                    book TEXT,
-                    price INT,
-                    edge_pct NUMERIC NOT NULL,
-                    confidence TEXT NOT NULL,
-                    grade TEXT,
-                    grade_reason TEXT,
-                    status TEXT NOT NULL DEFAULT 'active',
-                    model_version TEXT NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                )
-                """
-            )
-            cur.execute("ALTER TABLE odds ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_book TEXT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_price INT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS odds_asof TIMESTAMPTZ")
-            # Spec 06 columns; canonical definition is migration 006_under_prices.sql.
-            cur.execute("ALTER TABLE odds ADD COLUMN IF NOT EXISTS under_price INT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_under_book TEXT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_under_price INT")
-            cur.execute(
-                "ALTER TABLE odds_normalized"
-                " ADD COLUMN IF NOT EXISTS vig_removed BOOLEAN NOT NULL DEFAULT FALSE"
-            )
-            cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS market_book TEXT")
-            cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS market_price INT")
-            cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS odds_asof TIMESTAMPTZ")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS market_book TEXT")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS market_price INT")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS decision TEXT")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS rejection_reason TEXT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS book TEXT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS price INT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS grade TEXT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS grade_reason TEXT")
-            cur.execute("ALTER TABLE features ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE odds_normalized DROP CONSTRAINT IF EXISTS odds_normalized_pkey")
-            cur.execute("ALTER TABLE model_scores DROP CONSTRAINT IF EXISTS model_scores_pkey")
-            cur.execute("ALTER TABLE edges DROP CONSTRAINT IF EXISTS edges_pkey")
-            cur.execute("ALTER TABLE features DROP CONSTRAINT IF EXISTS features_pkey")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_picks_date_status ON picks(game_date, status)")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_game_market ON edges(game_id, market)")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_odds_game_market_book ON odds(game_id, market, book)")
-            cur.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_odds_normalized_game_player_market ON odds_normalized(game_id, player_id, market)"
-            )
-            cur.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_model_scores_game_player_market_scored ON model_scores(game_id, player_id, market, scored_at)"
-            )
-            cur.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_edges_game_player_market_side_scored ON edges(game_id, player_id, market, side, scored_at)"
-            )
-            cur.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_features_game_player_feature_generated ON features(game_id, player_id, feature_name, generated_at)"
-            )
+            columns: dict[str, set[str]] = {}
+            for row in cur.fetchall():
+                columns.setdefault(str(row["table_name"]), set()).add(str(row["column_name"]))
+            cur.execute("SELECT indexname FROM pg_indexes WHERE schemaname = current_schema()")
+            indexes = {str(row["indexname"]) for row in cur.fetchall()}
+    missing = missing_pregame_schema(columns, indexes)
+    if missing:
+        raise RuntimeError(
+            f"Pregame schema is out of date ({', '.join(missing)}): {PREGAME_MIGRATIONS_HINT}"
+        )
+    _pregame_schema_verified = True

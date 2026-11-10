@@ -61,8 +61,8 @@
 
 - Pricing each book's own line separately (alt lines); de-vig methods other than
   proportional; CLV tracking; changes to thresholds/caps.
-- Retiring `_ensure_pregame_tables` (it issues `ALTER`/`DROP CONSTRAINT` at runtime, which
-  CLAUDE.md reserves for reviewed migrations) — flagged for a separate change.
+- ~~Retiring `_ensure_pregame_tables`~~ — done: migration `007_pregame_schema_reconcile.sql`
+  now owns that schema and the pipeline only verifies it (`_require_pregame_schema`).
 
 ## Acceptance Criteria
 

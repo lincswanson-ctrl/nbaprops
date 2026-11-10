@@ -273,6 +273,9 @@ def main() -> int:
     for mig_name, mig_rel in (
         ("migrate_001", Path("data_pipeline/schemas/001_initial_nba.sql")),
         ("migrate_002", Path("data_pipeline/schemas/002_injuries.sql")),
+        ("migrate_005", Path("data_pipeline/schemas/005_pregame_pipeline.sql")),
+        ("migrate_006", Path("data_pipeline/schemas/006_under_prices.sql")),
+        ("migrate_007", Path("data_pipeline/schemas/007_pregame_schema_reconcile.sql")),
     ):
         print(f"go_no_go: step {mig_name} ...", file=sys.stderr)
         mig_result = _run_sql_file(mig_name, database_url, mig_rel)
