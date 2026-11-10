@@ -12,6 +12,8 @@ from models.walk_forward import HistoryIndex, PlayerGame
 from orchestration.backtest import (
     BetRecord,
     bankroll_curve,
+    blend_samples,
+    fit_blend_weights,
     build_candidates,
     calibration_samples,
     run_betting,
@@ -142,3 +144,31 @@ def test_bankroll_curve_daily() -> None:
         {"date": "2026-01-02", "bankroll": 101.0},
         {"date": "2026-01-03", "bankroll": 100.0},
     ]
+
+
+def test_run_betting_market_only_weight_makes_no_picks() -> None:
+    index = _history([20, 21, 19, 20, 22, 18, 20, 21], target_points=17)
+    assert run_betting(index, [_line(26.5)], RULES, weights={"default": 0.0}) == []
+
+
+def test_run_betting_blend_shrinks_edge() -> None:
+    index = _history([20, 21, 19, 20, 22, 18, 20, 21], target_points=17)
+    raw = run_betting(index, [_line(26.5)], RULES)[0]
+    blended = run_betting(index, [_line(26.5)], RULES, weights={"default": 0.5})[0]
+    assert 0 < blended.edge < raw.edge
+
+
+def test_blend_samples_skip_dnp_and_push() -> None:
+    played = _history([20, 21, 19, 20, 22, 18, 20, 21], target_points=17)
+    assert len(blend_samples(played, [_line(26.5)])["player_points"]) == 1
+    assert blend_samples(played, [_line(17.0)]) == {}  # push
+    dnp = _history([20, 21, 19, 20, 22, 18, 20, 21], target_points=None)
+    assert blend_samples(dnp, [_line(26.5)]) == {}
+
+
+def test_fit_blend_weights_requires_min_samples() -> None:
+    index = _history([20, 21, 19, 20, 22, 18, 20, 21], target_points=17)
+    samples = blend_samples(index, [_line(26.5)])
+    assert fit_blend_weights(samples, min_samples=2) == ({}, None)
+    fits, pooled = fit_blend_weights(samples, min_samples=1)
+    assert set(fits) == {"player_points"} and pooled is not None

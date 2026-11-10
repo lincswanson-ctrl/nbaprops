@@ -77,6 +77,15 @@ py -m orchestration.backtest --start 2026-04-18 --end 2026-06-20 --mode betting 
 
 Writes `data/backtest/calibration_<label>.json`, `summary_<label>.json`, `bankroll_<label>.json`, `bets_<label>.csv`.
 
+Fit model/market blend weights (spec 08) on an earlier window, then bet a later one with them:
+
+```powershell
+py -m orchestration.backtest --start 2026-04-18 --end 2026-05-20 --mode fit-blend --all-game-types --label fit
+py -m orchestration.backtest --start 2026-05-21 --end 2026-06-20 --mode betting --all-game-types --blend-weights data/backtest/blend_weights_fit.yaml --label oos
+```
+
+Review `data/backtest/blend_weights_fit.yaml`, then copy it to `config/blend_weights.yaml` to use it live.
+
 ### Dashboard only (assumes picks already generated)
 
 ```powershell

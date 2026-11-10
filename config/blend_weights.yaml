@@ -1,0 +1,11 @@
+## Model/market blend weights (spec 08).
+## logit(p) = w * logit(p_model) + (1 - w) * logit(p_market)
+##   w = 0 -> trust the de-vigged market completely (no picks)
+##   w = 1 -> raw model (claimed edges are mostly noise; see specs/07_backtest.md)
+##
+## PLACEHOLDER: not fitted on real data yet. Regenerate with
+##   py -m orchestration.backtest --season 2025-26 --mode fit-blend
+## (needs stored closing lines), review data/backtest/blend_weights_<label>.yaml, then copy here.
+fitted: false
+weights:
+  default: 0.25

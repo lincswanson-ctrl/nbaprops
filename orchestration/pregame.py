@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 import structlog
 
+from betting.blend import blend_prob, weight_for_market
 from betting.market import BookOffer, Consensus, SideDecision, consensus_offer, pick_side
 from betting.selection import Candidate, SelectionRules, select_picks
 from data_pipeline.config import get_settings
@@ -29,12 +30,14 @@ from data_pipeline.scrapers.odds.draftkings import DraftKingsScraper
 from models.baseline.projection import BASELINE_LOOKBACK_DAYS, BASELINE_MAX_GAMES
 from models.baseline.projection import MODEL_VERSION as BASELINE_MODEL_VERSION
 from models.baseline.projection import score_market
+from orchestration.blend_weights import load_blend_weights
 
 logger = structlog.get_logger(__name__)
 
 EDGE_THRESHOLD = 0.02
 EDGE_SANITY_BOUND = 0.50
 MODEL_VERSION = "naive_v1"
+BLENDED_MODEL_VERSION = "baseline_v1_blend"
 STALE_ODDS_MINUTES = 720
 MAX_PICKS_PER_PLAYER = 2
 MAX_PICKS_PER_GAME = 6
@@ -858,18 +861,21 @@ def run_model(target_date: date, season: str) -> StepResult:
     distribution and prices the actual line; ``naive_v1`` is the legacy placeholder.
     """
     _ensure_pregame_tables()
-    if _active_model_version() == BASELINE_MODEL_VERSION:
+    if get_settings().pregame_model_version == BASELINE_MODEL_VERSION:
         return _run_baseline_model(target_date)
     return _run_naive_model(target_date, season)
 
 
 def _active_model_version() -> str:
-    return str(get_settings().pregame_model_version)
+    """Version recorded on scores, edges and picks (baseline is always market-blended)."""
+    configured = str(get_settings().pregame_model_version)
+    return BLENDED_MODEL_VERSION if configured == BASELINE_MODEL_VERSION else configured
 
 
 def _run_baseline_model(target_date: date) -> StepResult:
-    """Score markets with ``models.baseline.projection`` (P(over consensus line))."""
+    """Score markets with baseline_v1, blended with the de-vigged market (spec 08)."""
     scored = skipped = 0
+    weights = load_blend_weights(get_settings().blend_weights_path)
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -882,25 +888,32 @@ def _run_baseline_model(target_date: date) -> StepResult:
                 player_id = str(row["player_id"])
                 if player_id not in history:
                     history[player_id] = _baseline_history(cur, player_id, target_date)
-                prob = score_market(
-                    str(row["market"]), float(row["consensus_line"]), history[player_id]
-                )
-                if prob is None:
+                market = str(row["market"])
+                raw = score_market(market, float(row["consensus_line"]), history[player_id])
+                if raw is None:
                     skipped += 1
                     continue
-                _insert_model_score(cur, row, prob, BASELINE_MODEL_VERSION)
+                prob = blend_prob(
+                    raw, float(row["fair_prob"]), weight_for_market(weights, market)
+                )
+                _insert_model_score(cur, row, prob, BLENDED_MODEL_VERSION)
                 scored += 1
-    logger.info("pregame_baseline_scored", scored=scored, skipped=skipped)
+    logger.info("pregame_baseline_scored", scored=scored, skipped=skipped, weights=weights)
     return StepResult(
         name="4_model",
-        details={"scores": scored, "skipped": skipped, "model_version": BASELINE_MODEL_VERSION},
+        details={
+            "scores": scored,
+            "skipped": skipped,
+            "model_version": BLENDED_MODEL_VERSION,
+            "blend_weights": weights,
+        },
     )
 
 
 def _markets_for_date(cur: Any, target_date: date) -> list[dict[str, Any]]:
     cur.execute(
         """
-        SELECT o.game_id, o.player_id, o.market, o.consensus_line,
+        SELECT o.game_id, o.player_id, o.market, o.consensus_line, o.fair_prob,
                o.best_book, o.best_price, o.odds_asof
         FROM odds_normalized o
         JOIN games g ON g.game_id = o.game_id

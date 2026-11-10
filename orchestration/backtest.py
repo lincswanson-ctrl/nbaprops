@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, cast
@@ -21,9 +21,11 @@ from typing import Any, cast
 import structlog
 from pydantic import BaseModel, ConfigDict
 
+from betting.blend import BlendFit, BlendSample, blend_prob, fit_weight, weight_for_market
 from betting.grading import grade_bet, profit_units
 from betting.market import BookOffer, consensus_offer, pick_side
 from betting.selection import Candidate, SelectionRules, select_picks
+from data_pipeline.config import get_settings
 from data_pipeline.db import get_connection
 from models.baseline.projection import (
     BASELINE_LOOKBACK_DAYS,
@@ -40,6 +42,7 @@ from models.walk_forward import (
     actual_value,
     proxy_line,
 )
+from orchestration.blend_weights import load_blend_weights, write_blend_weights
 from orchestration.pregame import EDGE_SANITY_BOUND, selection_rules
 
 logger = structlog.get_logger(__name__)
@@ -57,6 +60,8 @@ REGULAR_SEASON_GAME_ID_PREFIX = "002"
 BANKROLL_START_UNITS = 100.0
 EDGE_BUCKETS = ((0.0, 0.05), (0.05, 0.08), (0.08, 0.12), (0.12, 1.0))
 OUTPUT_DIR = Path("data/backtest")
+# Markets with fewer settled closing lines fall back to the pooled default weight.
+MIN_BLEND_FIT_SAMPLES = 200
 
 
 class BetRecord(BaseModel):
@@ -205,20 +210,33 @@ def run_calibration(index: HistoryIndex, targets: Sequence[PlayerGame]) -> dict[
 # --------------------------------------------------------------------------- betting
 
 
-def build_candidates(
-    index: HistoryIndex, closing_rows: Sequence[dict[str, Any]]
-) -> dict[date, list[tuple[Candidate, dict[str, Any]]]]:
-    """Score each closing-line market with information available before its game date."""
+def _group_closing(
+    closing_rows: Sequence[dict[str, Any]],
+) -> list[tuple[tuple[str, str, str], list[dict[str, Any]]]]:
     grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for r in closing_rows:
         grouped.setdefault((str(r["game_id"]), str(r["player_id"]), str(r["market"])), []).append(r)
+    return sorted(grouped.items())
+
+
+def build_candidates(
+    index: HistoryIndex,
+    closing_rows: Sequence[dict[str, Any]],
+    weights: Mapping[str, float] | None = None,
+) -> dict[date, list[tuple[Candidate, dict[str, Any]]]]:
+    """Score each closing-line market with information available before its game date.
+
+    ``weights`` are spec-08 blend weights; ``None`` scores with the raw model (w = 1).
+    """
     by_date: dict[date, list[tuple[Candidate, dict[str, Any]]]] = {}
-    for (game_id, player_id, market), rows in sorted(grouped.items()):
+    for (game_id, player_id, market), rows in _group_closing(closing_rows):
         game_date: date = rows[0]["game_date"]
         consensus = consensus_offer([_book_offer(r) for r in rows])
-        prob = score_market(market, consensus.line, index.prior_played(player_id, game_date))
-        if prob is None:
+        raw = score_market(market, consensus.line, index.prior_played(player_id, game_date))
+        if raw is None:
             continue
+        w = 1.0 if weights is None else weight_for_market(weights, market)
+        prob = blend_prob(raw, consensus.fair_over, w)
         side = pick_side(prob, consensus, EDGE_SANITY_BOUND)
         cand = Candidate(
             game_id=game_id,
@@ -250,11 +268,14 @@ def _book_offer(r: dict[str, Any]) -> BookOffer:
 
 
 def run_betting(
-    index: HistoryIndex, closing_rows: Sequence[dict[str, Any]], rules: SelectionRules
+    index: HistoryIndex,
+    closing_rows: Sequence[dict[str, Any]],
+    rules: SelectionRules,
+    weights: Mapping[str, float] | None = None,
 ) -> list[BetRecord]:
     """Replay live pick selection day by day and grade every pick."""
     bets: list[BetRecord] = []
-    for game_date, scored in sorted(build_candidates(index, closing_rows).items()):
+    for game_date, scored in sorted(build_candidates(index, closing_rows, weights).items()):
         context = {(c.game_id, c.player_id, c.market): ctx for c, ctx in scored}
         for decision in select_picks([c for c, _ in scored], rules):
             if decision.is_pick:
@@ -286,6 +307,35 @@ def _grade(index: HistoryIndex, cand: Candidate, ctx: dict[str, Any]) -> BetReco
         outcome=outcome,
         profit=profit_units(outcome, price),
     )
+
+
+def blend_samples(
+    index: HistoryIndex, closing_rows: Sequence[dict[str, Any]]
+) -> dict[str, list[BlendSample]]:
+    """Raw model vs de-vigged market vs outcome for every settled closing-line market."""
+    samples: dict[str, list[BlendSample]] = {}
+    for (game_id, player_id, market), rows in _group_closing(closing_rows):
+        game_date: date = rows[0]["game_date"]
+        consensus = consensus_offer([_book_offer(r) for r in rows])
+        raw = score_market(market, consensus.line, index.prior_played(player_id, game_date))
+        actual = actual_value(market, index.game(player_id, game_id))
+        if raw is None or actual is None or actual == consensus.line:
+            continue  # unscorable, did not play, or push
+        samples.setdefault(market, []).append(
+            BlendSample(
+                p_model=raw, p_market=consensus.fair_over, outcome=int(actual > consensus.line)
+            )
+        )
+    return samples
+
+
+def fit_blend_weights(
+    samples: Mapping[str, Sequence[BlendSample]], min_samples: int = MIN_BLEND_FIT_SAMPLES
+) -> tuple[dict[str, BlendFit], BlendFit | None]:
+    """Fit per-market weights (markets with enough samples) and a pooled default."""
+    fits = {m: fit_weight(s) for m, s in samples.items() if len(s) >= min_samples}
+    pooled = [x for s in samples.values() for x in s]
+    return fits, (fit_weight(pooled) if len(pooled) >= min_samples else None)
 
 
 def summarize_bets(bets: Sequence[BetRecord]) -> dict[str, Any]:
@@ -346,7 +396,17 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--season", help="Season label, e.g. 2025-26 (sets --start/--end)")
     parser.add_argument("--start", type=date.fromisoformat)
     parser.add_argument("--end", type=date.fromisoformat)
-    parser.add_argument("--mode", choices=["calibration", "betting", "both"], default="both")
+    parser.add_argument(
+        "--mode", choices=["calibration", "betting", "both", "fit-blend"], default="both"
+    )
+    parser.add_argument(
+        "--blend-weights",
+        type=Path,
+        help="Blend weights YAML for betting mode (default: live config/blend_weights.yaml)",
+    )
+    parser.add_argument(
+        "--no-blend", action="store_true", help="Betting mode with the raw model (w = 1)"
+    )
     parser.add_argument("--label", help="Output file label (default: season or start_end)")
     parser.add_argument(
         "--all-game-types",
@@ -373,33 +433,48 @@ def main(argv: Sequence[str] | None = None) -> None:
     regular_only = not args.all_game_types
     games = load_player_games(start, end)
     index = HistoryIndex(games)
-    targets = [
-        g
-        for g in games
-        if start <= g.game_date <= end and (not regular_only or _is_regular_season(g.game_id))
-    ]
     out_dir: Path = args.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    logger.info("backtest_start", start=str(start), end=str(end), targets=len(targets))
+    logger.info("backtest_start", start=str(start), end=str(end), mode=args.mode)
     if args.mode in ("calibration", "both"):
-        report: dict[str, Any] = {
-            "model_version": "baseline_v1",
-            "start": str(start),
-            "end": str(end),
-        }
+        targets = [
+            g
+            for g in games
+            if start <= g.game_date <= end and (not regular_only or _is_regular_season(g.game_id))
+        ]
+        report: dict[str, Any] = {"model_version": "baseline_v1", "start": str(start)}
+        report["end"] = str(end)
         report["markets"] = run_calibration(index, targets)
         _write_json(out_dir / f"calibration_{label}.json", report)
+    closing = load_closing_lines(start, end, regular_only) if args.mode != "calibration" else []
     if args.mode in ("betting", "both"):
-        _run_and_write_betting(index, start, end, label, regular_only, out_dir)
+        weights = None if args.no_blend else load_blend_weights(_weights_path(args))
+        _write_betting(index, closing, weights, start, end, label, out_dir)
+    if args.mode == "fit-blend":
+        _write_blend_fit(index, closing, label, out_dir)
 
 
-def _run_and_write_betting(
-    index: HistoryIndex, start: date, end: date, label: str, regular_only: bool, out_dir: Path
+def _weights_path(args: argparse.Namespace) -> Path:
+    return Path(args.blend_weights) if args.blend_weights else get_settings().blend_weights_path
+
+
+def _write_betting(
+    index: HistoryIndex,
+    closing: Sequence[dict[str, Any]],
+    weights: Mapping[str, float] | None,
+    start: date,
+    end: date,
+    label: str,
+    out_dir: Path,
 ) -> None:
-    closing = load_closing_lines(start, end, regular_only)
-    bets = run_betting(index, closing, selection_rules())
-    summary: dict[str, Any] = {"model_version": "baseline_v1", "start": str(start), "end": str(end)}
-    summary["closing_line_rows"] = len(closing)
+    bets = run_betting(index, closing, selection_rules(), weights)
+    summary: dict[str, Any] = {
+        "model_version": "baseline_v1" if weights is None else "baseline_v1_blend",
+        "blend_weights": weights,
+        "start": str(start),
+        "end": str(end),
+        "closing_line_rows": len(closing),
+    }
     summary.update(summarize_bets(bets))
     _write_json(out_dir / f"summary_{label}.json", summary)
     _write_json(out_dir / f"bankroll_{label}.json", bankroll_curve(bets))
@@ -409,6 +484,17 @@ def _run_and_write_betting(
         for bet in bets:
             writer.writerow(bet.model_dump(mode="json"))
     logger.info("backtest_betting_done", bets=len(bets), profit=summary["profit_units"])
+
+
+def _write_blend_fit(
+    index: HistoryIndex, closing: Sequence[dict[str, Any]], label: str, out_dir: Path
+) -> None:
+    fits, pooled = fit_blend_weights(blend_samples(index, closing))
+    if pooled is None:
+        raise SystemExit(f"Not enough settled closing lines to fit (need {MIN_BLEND_FIT_SAMPLES})")
+    path = out_dir / f"blend_weights_{label}.yaml"
+    write_blend_weights(path, fits, default_weight=pooled.weight, source=f"backtest {label}")
+    logger.info("backtest_blend_fit", path=str(path), default=pooled.weight, markets=len(fits))
 
 
 def _write_json(path: Path, payload: Any) -> None:

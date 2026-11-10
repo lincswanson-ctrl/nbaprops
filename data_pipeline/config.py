@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     discord_webhook_url: str | None = None
     # Pregame model: "baseline_v1" (spec 05) or "naive_v1" (legacy placeholder).
     pregame_model_version: Literal["baseline_v1", "naive_v1"] = "baseline_v1"
+    # Spec 08: per-market model/market blend weights applied to baseline_v1 probabilities.
+    blend_weights_path: Path = Path("config/blend_weights.yaml")
     # FanDuel scraper: SBAPI host must match the licensed state subdomain from discovery.
     # Override via FANDUEL_SBAPI_HOST when geolocation resolves elsewhere.
     fanduel_sbapi_host: str = "sbapi.nj.sportsbook.fanduel.com"
