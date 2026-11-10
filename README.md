@@ -35,19 +35,19 @@ After `pip install -e ".[dev]"`, run `python -m pytest tests/unit/engine tests/u
 ### Game day (generates picks for today)
 
 ```powershell
-py scripts/run_pregame.py --date today --season 2025-26
+py scripts/run_pregame.py --date today --season 2026-27
 ```
 
 ### Specific date
 
 ```powershell
-py scripts/run_pregame.py --date 2026-05-09 --season 2025-26
+py scripts/run_pregame.py --date 2026-11-10 --season 2026-27
 ```
 
 ### Generate picks + open dashboard
 
 ```powershell
-py scripts/run_pregame.py --date today --season 2025-26 --open-dashboard
+py scripts/run_pregame.py --date today --season 2026-27 --open-dashboard
 ```
 
 ### CSV odds fallback (if live books fail)
@@ -58,14 +58,14 @@ Create `data/odds/manual_odds_YYYY-MM-DD.csv` with columns:
 Then run:
 
 ```powershell
-py scripts/run_pregame.py --date 2026-05-09 --season 2025-26 --fail-fast
+py scripts/run_pregame.py --date 2026-11-10 --season 2026-27 --fail-fast
 ```
 
 Optional explicit path override:
 
 ```powershell
 $env:PREGAME_ODDS_CSV="C:\path\to\manual_odds.csv"
-py scripts/run_pregame.py --date 2026-05-09 --season 2025-26
+py scripts/run_pregame.py --date 2026-11-10 --season 2026-27
 ```
 
 ### Dashboard only (assumes picks already generated)

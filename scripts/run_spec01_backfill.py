@@ -9,6 +9,7 @@ import json
 
 from data_pipeline.loaders.nba_stats import NBAStatsLoader
 from data_pipeline.logging import get_logger
+from data_pipeline.seasons import current_nba_season
 from data_pipeline.scrapers.nba_stats import NBAStatsScraper, _extract_game_ids
 
 logger = get_logger(__name__)
@@ -38,7 +39,7 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description="Run Spec 01 backfill")
     parser.add_argument("--start-season", default="2020-21")
-    parser.add_argument("--end-season", default="2025-26")
+    parser.add_argument("--end-season", default=current_nba_season())
     args = parser.parse_args()
     seasons = _season_labels(args.start_season, args.end_season)
     loader = NBAStatsLoader()

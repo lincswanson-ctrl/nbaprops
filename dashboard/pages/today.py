@@ -17,6 +17,7 @@ from dashboard.queries import (
     get_picks,
     get_summary,
 )
+from data_pipeline.seasons import current_nba_season
 
 
 def render() -> None:
@@ -42,7 +43,10 @@ def render() -> None:
         ]
     )
     if not picks:
-        st.info("No picks generated yet - run: py scripts/run_pregame.py --date today --season 2025-26")
+        st.info(
+            "No picks generated yet - run: py scripts/run_pregame.py --date today --season "
+            f"{current_nba_season()}"
+        )
         return
     st.dataframe(_official_main_table_frame(picks), hide_index=True, width="stretch")
     if edge_distribution:

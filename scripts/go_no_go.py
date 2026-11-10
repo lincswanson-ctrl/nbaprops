@@ -21,6 +21,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from data_pipeline.config import get_settings
+from data_pipeline.seasons import current_nba_season, previous_season
 
 
 def _configure_stdio_utf8() -> None:
@@ -163,7 +164,7 @@ def main() -> int:
     _configure_stdio_utf8()
 
     parser = argparse.ArgumentParser(description="Go/No-Go runner for specs 01/02")
-    parser.add_argument("--season", default="2025-26")
+    parser.add_argument("--season", default=current_nba_season())
     parser.add_argument("--output", default="go_no_go_report.json")
     parser.add_argument("--no-fail-fast", action="store_true")
     parser.add_argument(
@@ -297,12 +298,32 @@ def main() -> int:
                 "--core-only",
             ],
         ),
-        ("load_nba", [python_exe, "-m", "data_pipeline.loaders.nba_stats", "--season", args.season]),
+        (
+            "load_nba",
+            [python_exe, "-m", "data_pipeline.loaders.nba_stats", "--season", args.season],
+        ),
         ("validate_nba", [python_exe, "scripts/validate_nba_load.py"]),
-        ("validate_bref", [python_exe, "scripts/validate_nba_vs_bref.py", "--season", "2024-25"]),
-        ("scrape_injuries", [python_exe, "-m", "data_pipeline.scrapers.injuries", "--source", "all", "--once"]),
-        ("load_injury_rw", [python_exe, "-m", "data_pipeline.loaders.injuries", "--source", "rotowire"]),
-        ("load_injury_es", [python_exe, "-m", "data_pipeline.loaders.injuries", "--source", "espn"]),
+        (
+            "validate_bref",
+            [
+                python_exe,
+                "scripts/validate_nba_vs_bref.py",
+                "--season",
+                previous_season(args.season),
+            ],
+        ),
+        (
+            "scrape_injuries",
+            [python_exe, "-m", "data_pipeline.scrapers.injuries", "--source", "all", "--once"],
+        ),
+        (
+            "load_injury_rw",
+            [python_exe, "-m", "data_pipeline.loaders.injuries", "--source", "rotowire"],
+        ),
+        (
+            "load_injury_es",
+            [python_exe, "-m", "data_pipeline.loaders.injuries", "--source", "espn"],
+        ),
         (
             "validate_injuries",
             [python_exe, "scripts/validate_injury_sources.py", "--min-shared-players", "20"],
