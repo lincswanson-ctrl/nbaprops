@@ -8,12 +8,12 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 import os
 from pathlib import Path
-from statistics import median
 from typing import Any
 
 import httpx
 import structlog
 
+from betting.market import BookOffer, Consensus, SideDecision, consensus_offer, pick_side
 from data_pipeline.config import get_settings
 from data_pipeline.db import get_connection
 from data_pipeline.loaders.injuries import InjuryLoader
@@ -420,8 +420,13 @@ def _build_odds_tables_from_csv(target_date: date) -> dict[str, int]:
                         continue
                     cur.execute(
                         """
-                        INSERT INTO odds (game_id, player_id, market, book, line, price, odds_timestamp)
-                        VALUES (%(game_id)s, %(player_id)s, %(market)s, %(book)s, %(line)s, %(price)s, %(odds_timestamp)s)
+                        INSERT INTO odds (
+                            game_id, player_id, market, book, line, price, under_price, odds_timestamp
+                        )
+                        VALUES (
+                            %(game_id)s, %(player_id)s, %(market)s, %(book)s, %(line)s, %(price)s,
+                            %(under_price)s, %(odds_timestamp)s
+                        )
                         """,
                         {
                             "game_id": row["game_id"],
@@ -430,6 +435,7 @@ def _build_odds_tables_from_csv(target_date: date) -> dict[str, int]:
                             "book": row.get("book") or "csv_manual",
                             "line": float(row.get("line", "0")),
                             "price": int(row.get("price", "-110")),
+                            "under_price": int(row["under_price"]) if row.get("under_price") else None,
                             "odds_timestamp": row.get("odds_timestamp") or datetime.now(UTC).isoformat(),
                         },
                     )
@@ -492,8 +498,11 @@ def _clear_odds_tables(cur: Any, target_date: date) -> None:
 def _copy_raw_odds(cur: Any, target_date: date) -> int:
     cur.execute(
         """
-        INSERT INTO odds (game_id, player_id, market, book, line, price, odds_timestamp)
-        SELECT pl.game_id, pl.player_id, pl.market, pl.book, pl.line, pl.over_price, pl.snapshot_ts
+        INSERT INTO odds (
+            game_id, player_id, market, book, line, price, under_price, odds_timestamp
+        )
+        SELECT pl.game_id, pl.player_id, pl.market, pl.book, pl.line, pl.over_price,
+               pl.under_price, pl.snapshot_ts
         FROM prop_lines pl
         JOIN games g ON g.game_id = pl.game_id
         JOIN players p ON p.player_id::text = pl.player_id::text
@@ -508,7 +517,8 @@ def _copy_raw_odds(cur: Any, target_date: date) -> int:
 def _group_odds_rows(cur: Any, target_date: date) -> dict[tuple[str, str, str], list[dict[str, Any]]]:
     cur.execute(
         """
-        SELECT o.game_id, o.player_id, o.market, o.book, o.line, o.price, o.odds_timestamp
+        SELECT o.game_id, o.player_id, o.market, o.book, o.line, o.price, o.under_price,
+               o.odds_timestamp
         FROM odds o
         JOIN games g ON g.game_id = o.game_id
         JOIN players p ON p.player_id::text = o.player_id::text
@@ -527,22 +537,28 @@ def _group_odds_rows(cur: Any, target_date: date) -> dict[tuple[str, str, str], 
 def _upsert_normalized_row(
     cur: Any, game_id: str, player_id: str, market: str, values: list[dict[str, Any]]
 ) -> None:
-    lines = [float(v["line"]) for v in values]
-    prices = [int(v["price"]) for v in values]
-    consensus_line = median(lines)
-    consensus_price = sum(prices) / max(len(prices), 1)
-    best_offer = max(values, key=lambda row: int(row["price"]))
-    best_book = str(best_offer["book"])
-    best_price = int(best_offer["price"])
-    odds_asof = max(row["odds_timestamp"] for row in values)
-    fair_prob = _american_to_prob(int(round(consensus_price)))
+    """Write the spec-06 consensus (single line, vig-free over prob, best prices per side)."""
+    consensus = consensus_offer(
+        [
+            BookOffer(
+                book=str(v["book"]),
+                line=float(v["line"]),
+                over_price=int(v["price"]),
+                under_price=int(v["under_price"]) if v.get("under_price") is not None else None,
+            )
+            for v in values
+        ]
+    )
     cur.execute(
         """
         INSERT INTO odds_normalized (
-            game_id, player_id, market, consensus_line, consensus_price, fair_prob, best_book, best_price, odds_asof, generated_at
+            game_id, player_id, market, consensus_line, consensus_price, fair_prob, best_book,
+            best_price, best_under_book, best_under_price, vig_removed, odds_asof, generated_at
         )
         VALUES (
-            %(game_id)s, %(player_id)s, %(market)s, %(line)s, %(price)s, %(prob)s, %(best_book)s, %(best_price)s, %(odds_asof)s, NOW()
+            %(game_id)s, %(player_id)s, %(market)s, %(line)s, %(price)s, %(prob)s, %(best_book)s,
+            %(best_price)s, %(best_under_book)s, %(best_under_price)s, %(vig_removed)s,
+            %(odds_asof)s, NOW()
         )
         ON CONFLICT (game_id, player_id, market) DO UPDATE SET
             consensus_line = EXCLUDED.consensus_line,
@@ -550,6 +566,9 @@ def _upsert_normalized_row(
             fair_prob = EXCLUDED.fair_prob,
             best_book = EXCLUDED.best_book,
             best_price = EXCLUDED.best_price,
+            best_under_book = EXCLUDED.best_under_book,
+            best_under_price = EXCLUDED.best_under_price,
+            vig_removed = EXCLUDED.vig_removed,
             odds_asof = EXCLUDED.odds_asof,
             generated_at = EXCLUDED.generated_at
         """,
@@ -557,12 +576,15 @@ def _upsert_normalized_row(
             "game_id": game_id,
             "player_id": player_id,
             "market": market,
-            "line": consensus_line,
-            "price": consensus_price,
-            "prob": fair_prob,
-            "best_book": best_book,
-            "best_price": best_price,
-            "odds_asof": odds_asof,
+            "line": consensus.line,
+            "price": consensus.consensus_price,
+            "prob": consensus.fair_over,
+            "best_book": consensus.best_over_book,
+            "best_price": consensus.best_over_price,
+            "best_under_book": consensus.best_under_book,
+            "best_under_price": consensus.best_under_price,
+            "vig_removed": consensus.vig_removed,
+            "odds_asof": max(row["odds_timestamp"] for row in values),
         },
     )
 
@@ -1090,7 +1112,9 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
             cur.execute(
                 """
                 SELECT ms.game_id, ms.market, ms.model_prob, ms.model_line, onr.fair_prob
-                     , ms.player_id, ms.market_book, ms.market_price, ms.odds_asof
+                     , ms.player_id, ms.odds_asof, onr.consensus_line, onr.consensus_price
+                     , onr.best_book, onr.best_price, onr.best_under_book, onr.best_under_price
+                     , onr.vig_removed
                 FROM model_scores ms
                 JOIN odds_normalized onr
                   ON onr.game_id = ms.game_id
@@ -1103,18 +1127,23 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
             )
             rows = cur.fetchall()
             rows_sorted = sorted(
-                [dict(row) for row in rows],
-                key=lambda r: _edge_pct(float(r["model_prob"]), float(r["fair_prob"])),
+                [{**dict(row), "_side": _side_for_row(dict(row))} for row in rows],
+                key=lambda r: r["_side"].edge,
                 reverse=True,
             )
             player_pick_counts: dict[str, int] = {}
             game_pick_counts: dict[str, int] = {}
             selected_for_picks: list[dict[str, Any]] = []
             for row in rows_sorted:
+                chosen = row["_side"]
+                side = chosen.side
+                edge = chosen.edge
+                # Probabilities recorded for the chosen side (under = 1 - over).
                 model_prob = float(row["model_prob"])
                 market_prob = float(row["fair_prob"])
-                edge = _edge_pct(model_prob, market_prob)
-                side = "over" if edge >= 0 else "under"
+                if side == "under":
+                    model_prob, market_prob = 1.0 - model_prob, 1.0 - market_prob
+                row["market_book"], row["market_price"] = chosen.book, chosen.price
                 market = str(row["market"])
                 player_id = str(row["player_id"])
                 game_id = str(row["game_id"])
@@ -1124,6 +1153,9 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                     decision = "reject"
                     rejection_reason = "stale_odds"
                     rejected_stale += 1
+                if decision == "keep" and chosen.price is None:
+                    decision = "reject"
+                    rejection_reason = "no_under_price"
                 threshold = _market_edge_threshold(market)
                 if decision == "keep" and edge < threshold:
                     decision = "reject"
@@ -1172,8 +1204,8 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                         "market": market,
                         "side": side,
                         "edge_pct": edge,
-                        "market_book": str(row["market_book"]),
-                        "market_price": int(row["market_price"]),
+                        "market_book": row["market_book"],
+                        "market_price": row["market_price"],
                     }
                 )
                 if decision == "keep" and edge >= EDGE_THRESHOLD:
@@ -1240,6 +1272,22 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
             "rejected_exposure": rejected_exposure,
         },
     )
+
+
+def _side_for_row(row: dict[str, Any]) -> SideDecision:
+    """Spec 06: pick over/under for one scored market from its stored consensus."""
+    consensus = Consensus(
+        line=float(row["consensus_line"]),
+        fair_over=float(row["fair_prob"]),
+        consensus_price=int(round(float(row["consensus_price"]))),
+        best_over_book=str(row["best_book"]),
+        best_over_price=int(row["best_price"]),
+        best_under_book=row.get("best_under_book"),
+        best_under_price=row.get("best_under_price"),
+        vig_removed=bool(row.get("vig_removed")),
+        books_at_line=0,
+    )
+    return pick_side(float(row["model_prob"]), consensus, EDGE_SANITY_BOUND)
 
 
 def run_validation(target_date: date, season: str) -> StepResult:
@@ -1627,6 +1675,14 @@ def _ensure_pregame_tables() -> None:
             cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_book TEXT")
             cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_price INT")
             cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS odds_asof TIMESTAMPTZ")
+            # Spec 06 columns; canonical definition is migration 006_under_prices.sql.
+            cur.execute("ALTER TABLE odds ADD COLUMN IF NOT EXISTS under_price INT")
+            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_under_book TEXT")
+            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_under_price INT")
+            cur.execute(
+                "ALTER TABLE odds_normalized"
+                " ADD COLUMN IF NOT EXISTS vig_removed BOOLEAN NOT NULL DEFAULT FALSE"
+            )
             cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS player_id TEXT")
             cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS market_book TEXT")
             cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS market_price INT")

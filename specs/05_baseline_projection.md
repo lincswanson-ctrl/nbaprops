@@ -3,7 +3,7 @@
 **Module:** `models/baseline/projection.py` (pure functions) + wiring in `orchestration/pregame.py`
 **Owner:** Claude (Lincoln approves)
 **Depends on:** `player_game_stats`, `games`, `odds_normalized` (specs 01, 03, `005_pregame_pipeline.sql`)
-**Status:** Draft — awaiting Lincoln's approval of the open decisions at the bottom
+**Status:** Approved 2026-11-10 with the defaults below (baseline_v1 default, normal approximation, 400-day lookback)
 
 ---
 
