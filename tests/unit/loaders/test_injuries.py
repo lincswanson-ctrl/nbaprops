@@ -166,3 +166,22 @@ def test_loader_snapshot_counts(monkeypatch: pytest.MonkeyPatch) -> None:
     assert summary.total_records == 2
     assert summary.inserted == 1
     assert summary.unresolved_names == 1
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Ques", "questionable"),
+        ("Doubt", "doubtful"),
+        ("Prob", "probable"),
+        ("Out", "out"),
+        ("OFS", "out"),
+        ("Day-To-Day", "questionable"),
+        ("DTD", "questionable"),
+        ("Day-to-day (doubtful)", "doubtful"),
+        (" ofs ", "out"),
+        ("Suspended", "unknown"),
+    ],
+)
+def test_normalize_rotowire_abbreviations(raw: str, expected: str) -> None:
+    assert normalize_status(raw) == expected

@@ -97,7 +97,6 @@ class NBAStatsLoader:
                 advanced_payload = json.loads(adv_file.read_text(encoding="utf-8"))
             with get_connection() as conn:
                 with conn.cursor() as cur:
-                    _ensure_player_game_stats_columns(cur)
                     payload = json.loads(trad_file.read_text(encoding="utf-8"))
                     players = _extract_players_from_boxscore(payload)
                     stats = _extract_player_stats_from_boxscore(payload, advanced_payload, game_id=game_id)
@@ -120,35 +119,6 @@ class NBAStatsLoader:
                     )
                     loaded += rows
         return loaded
-
-
-def _ensure_player_game_stats_columns(cur: Any) -> None:
-    """Ensure legacy databases have required player_game_stats columns."""
-
-    cur.execute(
-        """
-        ALTER TABLE player_game_stats
-            ADD COLUMN IF NOT EXISTS team_id TEXT,
-            ADD COLUMN IF NOT EXISTS minutes NUMERIC,
-            ADD COLUMN IF NOT EXISTS points INT,
-            ADD COLUMN IF NOT EXISTS rebounds INT,
-            ADD COLUMN IF NOT EXISTS assists INT,
-            ADD COLUMN IF NOT EXISTS steals INT,
-            ADD COLUMN IF NOT EXISTS blocks INT,
-            ADD COLUMN IF NOT EXISTS fga INT,
-            ADD COLUMN IF NOT EXISTS fgm INT,
-            ADD COLUMN IF NOT EXISTS fg3a INT,
-            ADD COLUMN IF NOT EXISTS fg3m INT,
-            ADD COLUMN IF NOT EXISTS fta INT,
-            ADD COLUMN IF NOT EXISTS ftm INT,
-            ADD COLUMN IF NOT EXISTS turnovers INT,
-            ADD COLUMN IF NOT EXISTS plus_minus INT,
-            ADD COLUMN IF NOT EXISTS usage_rate NUMERIC,
-            ADD COLUMN IF NOT EXISTS true_shooting NUMERIC,
-            ADD COLUMN IF NOT EXISTS starter BOOLEAN,
-            ADD COLUMN IF NOT EXISTS dnp_reason TEXT
-        """
-    )
 
 
 def _extract_games_from_scoreboard(payload: dict[str, Any], season: str) -> list[GameRow]:

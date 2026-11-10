@@ -35,19 +35,19 @@ After `pip install -e ".[dev]"`, run `python -m pytest tests/unit/engine tests/u
 ### Game day (generates picks for today)
 
 ```powershell
-py scripts/run_pregame.py --date today --season 2025-26
+py scripts/run_pregame.py --date today --season 2026-27
 ```
 
 ### Specific date
 
 ```powershell
-py scripts/run_pregame.py --date 2026-05-09 --season 2025-26
+py scripts/run_pregame.py --date 2026-11-10 --season 2026-27
 ```
 
 ### Generate picks + open dashboard
 
 ```powershell
-py scripts/run_pregame.py --date today --season 2025-26 --open-dashboard
+py scripts/run_pregame.py --date today --season 2026-27 --open-dashboard
 ```
 
 ### CSV odds fallback (if live books fail)
@@ -58,15 +58,33 @@ Create `data/odds/manual_odds_YYYY-MM-DD.csv` with columns:
 Then run:
 
 ```powershell
-py scripts/run_pregame.py --date 2026-05-09 --season 2025-26 --fail-fast
+py scripts/run_pregame.py --date 2026-11-10 --season 2026-27 --fail-fast
 ```
 
 Optional explicit path override:
 
 ```powershell
 $env:PREGAME_ODDS_CSV="C:\path\to\manual_odds.csv"
-py scripts/run_pregame.py --date 2026-05-09 --season 2025-26
+py scripts/run_pregame.py --date 2026-11-10 --season 2026-27
 ```
+
+### Backtest (walk-forward, spec 07)
+
+```powershell
+py -m orchestration.backtest --season 2025-26 --mode calibration
+py -m orchestration.backtest --start 2026-04-18 --end 2026-06-20 --mode betting --all-game-types --label playoffs-2026
+```
+
+Writes `data/backtest/calibration_<label>.json`, `summary_<label>.json`, `bankroll_<label>.json`, `bets_<label>.csv`.
+
+Fit model/market blend weights (spec 08) on an earlier window, then bet a later one with them:
+
+```powershell
+py -m orchestration.backtest --start 2026-04-18 --end 2026-05-20 --mode fit-blend --all-game-types --label fit
+py -m orchestration.backtest --start 2026-05-21 --end 2026-06-20 --mode betting --all-game-types --blend-weights data/backtest/blend_weights_fit.yaml --label oos
+```
+
+Review `data/backtest/blend_weights_fit.yaml`, then copy it to `config/blend_weights.yaml` to use it live.
 
 ### Dashboard only (assumes picks already generated)
 

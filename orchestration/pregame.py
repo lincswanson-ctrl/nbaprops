@@ -8,12 +8,15 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 import os
 from pathlib import Path
-from statistics import median
 from typing import Any
 
 import httpx
 import structlog
 
+from betting.blend import blend_prob, weight_for_market
+from betting.market import BookOffer, Consensus, SideDecision, consensus_offer, pick_side
+from betting.selection import Candidate, SelectionRules, select_picks
+from data_pipeline.config import get_settings
 from data_pipeline.db import get_connection
 from data_pipeline.loaders.injuries import InjuryLoader
 from data_pipeline.loaders.nba_stats import NBAStatsLoader
@@ -24,12 +27,17 @@ from data_pipeline.scrapers.odds.__main__ import infer_nba_season, refresh_today
 from data_pipeline.scrapers.odds.base import canonical_market_names, normalize_team_abbr
 from data_pipeline.scrapers.odds.betmgm import BetMGMScraper
 from data_pipeline.scrapers.odds.draftkings import DraftKingsScraper
+from models.baseline.projection import BASELINE_LOOKBACK_DAYS, BASELINE_MAX_GAMES
+from models.baseline.projection import MODEL_VERSION as BASELINE_MODEL_VERSION
+from models.baseline.projection import score_market
+from orchestration.blend_weights import load_blend_weights
 
 logger = structlog.get_logger(__name__)
 
 EDGE_THRESHOLD = 0.02
 EDGE_SANITY_BOUND = 0.50
 MODEL_VERSION = "naive_v1"
+BLENDED_MODEL_VERSION = "baseline_v1_blend"
 STALE_ODDS_MINUTES = 720
 MAX_PICKS_PER_PLAYER = 2
 MAX_PICKS_PER_GAME = 6
@@ -46,6 +54,7 @@ MARKET_EDGE_THRESHOLDS: dict[str, float] = {
     "player_steals": 0.07,
     "player_steals_blocks": 0.07,
 }
+DEFAULT_MARKET_EDGE_THRESHOLD = 0.07
 
 
 @dataclass(frozen=True)
@@ -58,7 +67,7 @@ class StepResult:
 
 def run_ingest(target_date: date, season: str) -> StepResult:
     """Run existing NBA/injury scrape+load components for the target date."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     games_loaded = _ingest_nba_schedule(target_date, season)
     injury_records = _ingest_injuries()
     with get_connection() as conn:
@@ -330,7 +339,7 @@ def run_odds(
     books: tuple[str, ...] = ("all",),
 ) -> StepResult:
     """Scrape odds, stage raw odds rows, and build normalized market rows."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     used_csv_fallback = False
     try:
         _scrape_player_prop_odds(target_date, season, books=books)
@@ -416,8 +425,13 @@ def _build_odds_tables_from_csv(target_date: date) -> dict[str, int]:
                         continue
                     cur.execute(
                         """
-                        INSERT INTO odds (game_id, player_id, market, book, line, price, odds_timestamp)
-                        VALUES (%(game_id)s, %(player_id)s, %(market)s, %(book)s, %(line)s, %(price)s, %(odds_timestamp)s)
+                        INSERT INTO odds (
+                            game_id, player_id, market, book, line, price, under_price, odds_timestamp
+                        )
+                        VALUES (
+                            %(game_id)s, %(player_id)s, %(market)s, %(book)s, %(line)s, %(price)s,
+                            %(under_price)s, %(odds_timestamp)s
+                        )
                         """,
                         {
                             "game_id": row["game_id"],
@@ -426,6 +440,7 @@ def _build_odds_tables_from_csv(target_date: date) -> dict[str, int]:
                             "book": row.get("book") or "csv_manual",
                             "line": float(row.get("line", "0")),
                             "price": int(row.get("price", "-110")),
+                            "under_price": int(row["under_price"]) if row.get("under_price") else None,
                             "odds_timestamp": row.get("odds_timestamp") or datetime.now(UTC).isoformat(),
                         },
                     )
@@ -488,8 +503,11 @@ def _clear_odds_tables(cur: Any, target_date: date) -> None:
 def _copy_raw_odds(cur: Any, target_date: date) -> int:
     cur.execute(
         """
-        INSERT INTO odds (game_id, player_id, market, book, line, price, odds_timestamp)
-        SELECT pl.game_id, pl.player_id, pl.market, pl.book, pl.line, pl.over_price, pl.snapshot_ts
+        INSERT INTO odds (
+            game_id, player_id, market, book, line, price, under_price, odds_timestamp
+        )
+        SELECT pl.game_id, pl.player_id, pl.market, pl.book, pl.line, pl.over_price,
+               pl.under_price, pl.snapshot_ts
         FROM prop_lines pl
         JOIN games g ON g.game_id = pl.game_id
         JOIN players p ON p.player_id::text = pl.player_id::text
@@ -504,7 +522,8 @@ def _copy_raw_odds(cur: Any, target_date: date) -> int:
 def _group_odds_rows(cur: Any, target_date: date) -> dict[tuple[str, str, str], list[dict[str, Any]]]:
     cur.execute(
         """
-        SELECT o.game_id, o.player_id, o.market, o.book, o.line, o.price, o.odds_timestamp
+        SELECT o.game_id, o.player_id, o.market, o.book, o.line, o.price, o.under_price,
+               o.odds_timestamp
         FROM odds o
         JOIN games g ON g.game_id = o.game_id
         JOIN players p ON p.player_id::text = o.player_id::text
@@ -523,22 +542,28 @@ def _group_odds_rows(cur: Any, target_date: date) -> dict[tuple[str, str, str], 
 def _upsert_normalized_row(
     cur: Any, game_id: str, player_id: str, market: str, values: list[dict[str, Any]]
 ) -> None:
-    lines = [float(v["line"]) for v in values]
-    prices = [int(v["price"]) for v in values]
-    consensus_line = median(lines)
-    consensus_price = sum(prices) / max(len(prices), 1)
-    best_offer = max(values, key=lambda row: int(row["price"]))
-    best_book = str(best_offer["book"])
-    best_price = int(best_offer["price"])
-    odds_asof = max(row["odds_timestamp"] for row in values)
-    fair_prob = _american_to_prob(int(round(consensus_price)))
+    """Write the spec-06 consensus (single line, vig-free over prob, best prices per side)."""
+    consensus = consensus_offer(
+        [
+            BookOffer(
+                book=str(v["book"]),
+                line=float(v["line"]),
+                over_price=int(v["price"]),
+                under_price=int(v["under_price"]) if v.get("under_price") is not None else None,
+            )
+            for v in values
+        ]
+    )
     cur.execute(
         """
         INSERT INTO odds_normalized (
-            game_id, player_id, market, consensus_line, consensus_price, fair_prob, best_book, best_price, odds_asof, generated_at
+            game_id, player_id, market, consensus_line, consensus_price, fair_prob, best_book,
+            best_price, best_under_book, best_under_price, vig_removed, odds_asof, generated_at
         )
         VALUES (
-            %(game_id)s, %(player_id)s, %(market)s, %(line)s, %(price)s, %(prob)s, %(best_book)s, %(best_price)s, %(odds_asof)s, NOW()
+            %(game_id)s, %(player_id)s, %(market)s, %(line)s, %(price)s, %(prob)s, %(best_book)s,
+            %(best_price)s, %(best_under_book)s, %(best_under_price)s, %(vig_removed)s,
+            %(odds_asof)s, NOW()
         )
         ON CONFLICT (game_id, player_id, market) DO UPDATE SET
             consensus_line = EXCLUDED.consensus_line,
@@ -546,6 +571,9 @@ def _upsert_normalized_row(
             fair_prob = EXCLUDED.fair_prob,
             best_book = EXCLUDED.best_book,
             best_price = EXCLUDED.best_price,
+            best_under_book = EXCLUDED.best_under_book,
+            best_under_price = EXCLUDED.best_under_price,
+            vig_removed = EXCLUDED.vig_removed,
             odds_asof = EXCLUDED.odds_asof,
             generated_at = EXCLUDED.generated_at
         """,
@@ -553,19 +581,22 @@ def _upsert_normalized_row(
             "game_id": game_id,
             "player_id": player_id,
             "market": market,
-            "line": consensus_line,
-            "price": consensus_price,
-            "prob": fair_prob,
-            "best_book": best_book,
-            "best_price": best_price,
-            "odds_asof": odds_asof,
+            "line": consensus.line,
+            "price": consensus.consensus_price,
+            "prob": consensus.fair_over,
+            "best_book": consensus.best_over_book,
+            "best_price": consensus.best_over_price,
+            "best_under_book": consensus.best_under_book,
+            "best_under_price": consensus.best_under_price,
+            "vig_removed": consensus.vig_removed,
+            "odds_asof": max(row["odds_timestamp"] for row in values),
         },
     )
 
 
 def run_features(target_date: date, season: str) -> StepResult:
     """Compute deterministic game-level feature rows."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     del season
     feature_count, names = _build_features_for_date(target_date)
     if _count_games_for_date(target_date) > 0 and feature_count == 0:
@@ -824,8 +855,128 @@ def _spread_abs_for_game(cur: Any, game_id: str) -> float:
 
 
 def run_model(target_date: date, season: str) -> StepResult:
-    """Run a deterministic naive model using feature values."""
-    _ensure_pregame_tables()
+    """Score every market for ``target_date`` with the configured model version.
+
+    ``PREGAME_MODEL_VERSION=baseline_v1`` (default, spec 05) projects each player's stat
+    distribution and prices the actual line; ``naive_v1`` is the legacy placeholder.
+    """
+    _require_pregame_schema()
+    if get_settings().pregame_model_version == BASELINE_MODEL_VERSION:
+        return _run_baseline_model(target_date)
+    return _run_naive_model(target_date, season)
+
+
+def _active_model_version() -> str:
+    """Version recorded on scores, edges and picks (baseline is always market-blended)."""
+    configured = str(get_settings().pregame_model_version)
+    return BLENDED_MODEL_VERSION if configured == BASELINE_MODEL_VERSION else configured
+
+
+def _run_baseline_model(target_date: date) -> StepResult:
+    """Score markets with baseline_v1, blended with the de-vigged market (spec 08)."""
+    scored = skipped = 0
+    weights = load_blend_weights(get_settings().blend_weights_path)
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM model_scores"
+                " WHERE game_id IN (SELECT game_id FROM games WHERE date = %(d)s)",
+                {"d": target_date},
+            )
+            history: dict[str, list[dict[str, Any]]] = {}
+            for row in _markets_for_date(cur, target_date):
+                player_id = str(row["player_id"])
+                if player_id not in history:
+                    history[player_id] = _baseline_history(cur, player_id, target_date)
+                market = str(row["market"])
+                raw = score_market(market, float(row["consensus_line"]), history[player_id])
+                if raw is None:
+                    skipped += 1
+                    continue
+                prob = blend_prob(
+                    raw, float(row["fair_prob"]), weight_for_market(weights, market)
+                )
+                _insert_model_score(cur, row, prob, BLENDED_MODEL_VERSION)
+                scored += 1
+    logger.info("pregame_baseline_scored", scored=scored, skipped=skipped, weights=weights)
+    return StepResult(
+        name="4_model",
+        details={
+            "scores": scored,
+            "skipped": skipped,
+            "model_version": BLENDED_MODEL_VERSION,
+            "blend_weights": weights,
+        },
+    )
+
+
+def _markets_for_date(cur: Any, target_date: date) -> list[dict[str, Any]]:
+    cur.execute(
+        """
+        SELECT o.game_id, o.player_id, o.market, o.consensus_line, o.fair_prob,
+               o.best_book, o.best_price, o.odds_asof
+        FROM odds_normalized o
+        JOIN games g ON g.game_id = o.game_id
+        WHERE g.date = %(d)s
+        """,
+        {"d": target_date},
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+def _baseline_history(cur: Any, player_id: str, target_date: date) -> list[dict[str, Any]]:
+    """Played games strictly before ``target_date`` (point-in-time), most recent first."""
+    cur.execute(
+        """
+        SELECT pgs.points, pgs.rebounds, pgs.assists, pgs.fg3m, pgs.steals, pgs.blocks
+        FROM player_game_stats pgs
+        JOIN games g ON g.game_id = pgs.game_id
+        WHERE pgs.player_id::text = %(p)s::text
+          AND g.date < %(d)s
+          AND g.date >= %(d)s - %(lookback)s::int
+          AND COALESCE(pgs.minutes, 0) > 0
+          AND pgs.dnp_reason IS NULL
+        ORDER BY g.date DESC
+        LIMIT %(n)s
+        """,
+        {
+            "p": player_id,
+            "d": target_date,
+            "lookback": BASELINE_LOOKBACK_DAYS,
+            "n": BASELINE_MAX_GAMES,
+        },
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+def _insert_model_score(cur: Any, row: dict[str, Any], prob: float, version: str) -> None:
+    cur.execute(
+        """
+        INSERT INTO model_scores (
+            game_id, player_id, market, model_prob, model_line, market_book, market_price,
+            odds_asof, scored_at, model_version
+        )
+        VALUES (
+            %(game_id)s, %(player_id)s, %(market)s, %(model_prob)s, %(model_line)s,
+            %(market_book)s, %(market_price)s, %(odds_asof)s, NOW(), %(model_version)s
+        )
+        """,
+        {
+            "game_id": row["game_id"],
+            "player_id": row["player_id"],
+            "market": row["market"],
+            "model_prob": prob,
+            "model_line": row["consensus_line"],
+            "market_book": row["best_book"],
+            "market_price": row["best_price"],
+            "odds_asof": row["odds_asof"],
+            "model_version": version,
+        },
+    )
+
+
+def _run_naive_model(target_date: date, season: str) -> StepResult:
+    """Legacy placeholder model (``naive_v1``); ignores the line. Kept for comparison."""
     del season
     scored = 0
     with get_connection() as conn:
@@ -948,7 +1099,7 @@ def run_model(target_date: date, season: str) -> StepResult:
 
 def run_edge_selection(target_date: date, season: str) -> StepResult:
     """Compute edges and materialize active picks above threshold."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     del season
     edges_total = 0
     picks_total = 0
@@ -976,7 +1127,9 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
             cur.execute(
                 """
                 SELECT ms.game_id, ms.market, ms.model_prob, ms.model_line, onr.fair_prob
-                     , ms.player_id, ms.market_book, ms.market_price, ms.odds_asof
+                     , ms.player_id, ms.odds_asof, onr.consensus_line, onr.consensus_price
+                     , onr.best_book, onr.best_price, onr.best_under_book, onr.best_under_price
+                     , onr.vig_removed
                 FROM model_scores ms
                 JOIN odds_normalized onr
                   ON onr.game_id = ms.game_id
@@ -989,39 +1142,34 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
             )
             rows = cur.fetchall()
             rows_sorted = sorted(
-                [dict(row) for row in rows],
-                key=lambda r: _edge_pct(float(r["model_prob"]), float(r["fair_prob"])),
+                [{**dict(row), "_side": _side_for_row(dict(row))} for row in rows],
+                key=lambda r: r["_side"].edge,
                 reverse=True,
             )
-            player_pick_counts: dict[str, int] = {}
-            game_pick_counts: dict[str, int] = {}
             selected_for_picks: list[dict[str, Any]] = []
-            for row in rows_sorted:
+            decisions = select_picks(
+                [_candidate_for_row(row, now_utc) for row in rows_sorted], selection_rules()
+            )
+            for row, outcome in zip(rows_sorted, decisions, strict=True):
+                chosen = row["_side"]
+                side = chosen.side
+                edge = chosen.edge
+                # Probabilities recorded for the chosen side (under = 1 - over).
                 model_prob = float(row["model_prob"])
                 market_prob = float(row["fair_prob"])
-                edge = _edge_pct(model_prob, market_prob)
-                side = "over" if edge >= 0 else "under"
+                if side == "under":
+                    model_prob, market_prob = 1.0 - model_prob, 1.0 - market_prob
+                row["market_book"], row["market_price"] = chosen.book, chosen.price
                 market = str(row["market"])
                 player_id = str(row["player_id"])
                 game_id = str(row["game_id"])
-                decision = "keep"
-                rejection_reason: str | None = None
-                if _is_stale_odds(row.get("odds_asof"), now_utc):
-                    decision = "reject"
-                    rejection_reason = "stale_odds"
+                decision = outcome.decision
+                rejection_reason = outcome.rejection_reason
+                if rejection_reason == "stale_odds":
                     rejected_stale += 1
-                threshold = _market_edge_threshold(market)
-                if decision == "keep" and edge < threshold:
-                    decision = "reject"
-                    rejection_reason = "below_threshold"
+                elif rejection_reason == "below_threshold":
                     rejected_threshold += 1
-                if decision == "keep" and player_pick_counts.get(player_id, 0) >= MAX_PICKS_PER_PLAYER:
-                    decision = "reject"
-                    rejection_reason = "player_cap"
-                    rejected_exposure += 1
-                if decision == "keep" and game_pick_counts.get(game_id, 0) >= MAX_PICKS_PER_GAME:
-                    decision = "reject"
-                    rejection_reason = "game_cap"
+                elif rejection_reason in {"player_cap", "game_cap"}:
                     rejected_exposure += 1
 
                 cur.execute(
@@ -1047,7 +1195,7 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                         "market_price": row["market_price"],
                         "decision": decision,
                         "rejection_reason": rejection_reason,
-                        "model_version": MODEL_VERSION,
+                        "model_version": _active_model_version(),
                     },
                 )
                 edges_total += 1
@@ -1058,11 +1206,11 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                         "market": market,
                         "side": side,
                         "edge_pct": edge,
-                        "market_book": str(row["market_book"]),
-                        "market_price": int(row["market_price"]),
+                        "market_book": row["market_book"],
+                        "market_price": row["market_price"],
                     }
                 )
-                if decision == "keep" and edge >= EDGE_THRESHOLD:
+                if outcome.is_pick:
                     selected_for_picks.append(
                         {
                             "game_id": game_id,
@@ -1071,14 +1219,12 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                             "side": side,
                             "line": row["model_line"],
                             "edge": edge,
-                            "model_version": MODEL_VERSION,
+                            "model_version": _active_model_version(),
                             "player_id": player_id,
                             "book": row["market_book"],
                             "price": row["market_price"],
                         }
                     )
-                    player_pick_counts[player_id] = player_pick_counts.get(player_id, 0) + 1
-                    game_pick_counts[game_id] = game_pick_counts.get(game_id, 0) + 1
             selected_sorted = sorted(selected_for_picks, key=lambda r: float(r["edge"]), reverse=True)
             total_selected = len(selected_sorted)
             for idx, pick in enumerate(selected_sorted):
@@ -1128,9 +1274,50 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
     )
 
 
+def selection_rules() -> SelectionRules:
+    """Live thresholds and exposure caps (also replayed by the backtest)."""
+    return SelectionRules(
+        market_thresholds=MARKET_EDGE_THRESHOLDS,
+        default_threshold=DEFAULT_MARKET_EDGE_THRESHOLD,
+        min_pick_edge=EDGE_THRESHOLD,
+        max_picks_per_player=MAX_PICKS_PER_PLAYER,
+        max_picks_per_game=MAX_PICKS_PER_GAME,
+    )
+
+
+def _candidate_for_row(row: dict[str, Any], now_utc: datetime) -> Candidate:
+    chosen: SideDecision = row["_side"]
+    return Candidate(
+        game_id=str(row["game_id"]),
+        player_id=str(row["player_id"]),
+        market=str(row["market"]),
+        side=chosen.side,
+        edge=chosen.edge,
+        book=chosen.book,
+        price=chosen.price,
+        stale=_is_stale_odds(row.get("odds_asof"), now_utc),
+    )
+
+
+def _side_for_row(row: dict[str, Any]) -> SideDecision:
+    """Spec 06: pick over/under for one scored market from its stored consensus."""
+    consensus = Consensus(
+        line=float(row["consensus_line"]),
+        fair_over=float(row["fair_prob"]),
+        consensus_price=int(round(float(row["consensus_price"]))),
+        best_over_book=str(row["best_book"]),
+        best_over_price=int(row["best_price"]),
+        best_under_book=row.get("best_under_book"),
+        best_under_price=row.get("best_under_price"),
+        vig_removed=bool(row.get("vig_removed")),
+        books_at_line=0,
+    )
+    return pick_side(float(row["model_prob"]), consensus, EDGE_SANITY_BOUND)
+
+
 def run_validation(target_date: date, season: str) -> StepResult:
     """Run strict validation gates and raise on failures."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     del season
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -1269,7 +1456,7 @@ def run_validation(target_date: date, season: str) -> StepResult:
 
 def run_summary(target_date: date, season: str) -> StepResult:
     """Build and log summary values for the run."""
-    _ensure_pregame_tables()
+    _require_pregame_schema()
     del season
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -1360,7 +1547,7 @@ def _edge_pct(model_prob: float, market_prob: float) -> float:
 
 
 def _market_edge_threshold(market: str) -> float:
-    return MARKET_EDGE_THRESHOLDS.get(market, 0.07)
+    return MARKET_EDGE_THRESHOLDS.get(market, DEFAULT_MARKET_EDGE_THRESHOLD)
 
 
 def _is_stale_odds(odds_asof: datetime | None, now_utc: datetime) -> bool:
@@ -1401,149 +1588,143 @@ def _grade_pick(edge: float, rank_idx: int, total: int, market: str) -> tuple[st
     return grade, reason
 
 
-def _ensure_pregame_tables() -> None:
-    """Create required pregame pipeline tables if they do not exist."""
+# Columns and unique indexes the pregame steps rely on. Created by migrations
+# 005_pregame_pipeline.sql, 006_under_prices.sql and 007_pregame_schema_reconcile.sql.
+PREGAME_REQUIRED_COLUMNS: dict[str, frozenset[str]] = {
+    "odds": frozenset(
+        {"game_id", "player_id", "market", "book", "line", "price", "under_price", "odds_timestamp"}
+    ),
+    "odds_normalized": frozenset(
+        {
+            "game_id",
+            "player_id",
+            "market",
+            "consensus_line",
+            "consensus_price",
+            "fair_prob",
+            "best_book",
+            "best_price",
+            "best_under_book",
+            "best_under_price",
+            "vig_removed",
+            "odds_asof",
+            "generated_at",
+        }
+    ),
+    "features": frozenset({"game_id", "player_id", "feature_name", "value", "generated_at"}),
+    "model_scores": frozenset(
+        {
+            "game_id",
+            "player_id",
+            "market",
+            "model_prob",
+            "model_line",
+            "market_book",
+            "market_price",
+            "odds_asof",
+            "scored_at",
+            "model_version",
+        }
+    ),
+    "edges": frozenset(
+        {
+            "game_id",
+            "player_id",
+            "market",
+            "side",
+            "model_prob",
+            "market_prob",
+            "edge_pct",
+            "market_book",
+            "market_price",
+            "decision",
+            "rejection_reason",
+            "scored_at",
+            "model_version",
+        }
+    ),
+    "picks": frozenset(
+        {
+            "pick_id",
+            "game_id",
+            "player_id",
+            "game_date",
+            "market",
+            "side",
+            "line",
+            "book",
+            "price",
+            "edge_pct",
+            "confidence",
+            "grade",
+            "grade_reason",
+            "status",
+            "model_version",
+            "created_at",
+        }
+    ),
+}
+PREGAME_REQUIRED_UNIQUE_INDEXES = frozenset(
+    {
+        "ux_odds_normalized_game_player_market",
+        "ux_model_scores_game_player_market_scored",
+        "ux_edges_game_player_market_side_scored",
+        "ux_features_game_player_feature_generated",
+    }
+)
+PREGAME_MIGRATIONS_HINT = (
+    "apply data_pipeline/schemas/005_pregame_pipeline.sql, 006_under_prices.sql and "
+    "007_pregame_schema_reconcile.sql (scripts/go_no_go.py applies them)"
+)
+_pregame_schema_verified = False
+
+
+def missing_pregame_schema(columns: dict[str, set[str]], indexes: set[str]) -> list[str]:
+    """List required tables, columns and unique indexes absent from the database.
+
+    Args:
+        columns: Existing columns per table (tables absent from the dict don't exist).
+        indexes: Existing index names.
+
+    Returns:
+        Human-readable items such as ``"odds.under_price"``; empty when the schema is complete.
+    """
+    missing: list[str] = []
+    for table, required in PREGAME_REQUIRED_COLUMNS.items():
+        if table not in columns:
+            missing.append(f"table {table}")
+            continue
+        missing.extend(f"{table}.{col}" for col in sorted(required - columns[table]))
+    missing.extend(f"index {name}" for name in sorted(PREGAME_REQUIRED_UNIQUE_INDEXES - indexes))
+    return missing
+
+
+def _require_pregame_schema() -> None:
+    """Fail fast if migrations 005-007 are not applied. Read-only: never issues DDL.
+
+    Raises:
+        RuntimeError: Naming every missing table, column or index.
+    """
+    global _pregame_schema_verified
+    if _pregame_schema_verified:
+        return
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                CREATE TABLE IF NOT EXISTS odds (
-                    id BIGSERIAL PRIMARY KEY,
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    market TEXT NOT NULL,
-                    book TEXT NOT NULL,
-                    line NUMERIC NOT NULL,
-                    price INT NOT NULL,
-                    odds_timestamp TIMESTAMPTZ NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                )
-                """
+                SELECT table_name, column_name FROM information_schema.columns
+                WHERE table_schema = current_schema() AND table_name = ANY(%(t)s)
+                """,
+                {"t": list(PREGAME_REQUIRED_COLUMNS)},
             )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS odds_normalized (
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    market TEXT NOT NULL,
-                    consensus_line NUMERIC NOT NULL,
-                    consensus_price NUMERIC NOT NULL,
-                    fair_prob NUMERIC NOT NULL,
-                    best_book TEXT,
-                    best_price INT,
-                    odds_asof TIMESTAMPTZ,
-                    generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    PRIMARY KEY (game_id, player_id, market)
-                )
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS features (
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    feature_name TEXT NOT NULL,
-                    value NUMERIC NOT NULL,
-                    generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    PRIMARY KEY (game_id, player_id, feature_name, generated_at)
-                )
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS model_scores (
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    market TEXT NOT NULL,
-                    model_prob NUMERIC NOT NULL,
-                    model_line NUMERIC,
-                    market_book TEXT,
-                    market_price INT,
-                    odds_asof TIMESTAMPTZ,
-                    scored_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    model_version TEXT NOT NULL,
-                    PRIMARY KEY (game_id, player_id, market, scored_at)
-                )
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS edges (
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    market TEXT NOT NULL,
-                    side TEXT NOT NULL,
-                    model_prob NUMERIC NOT NULL,
-                    market_prob NUMERIC NOT NULL,
-                    edge_pct NUMERIC NOT NULL,
-                    market_book TEXT,
-                    market_price INT,
-                    decision TEXT,
-                    rejection_reason TEXT,
-                    scored_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    model_version TEXT NOT NULL,
-                    PRIMARY KEY (game_id, player_id, market, side, scored_at)
-                )
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS picks (
-                    pick_id BIGSERIAL PRIMARY KEY,
-                    game_id TEXT NOT NULL REFERENCES games(game_id),
-                    player_id TEXT,
-                    game_date DATE NOT NULL,
-                    market TEXT NOT NULL,
-                    side TEXT NOT NULL,
-                    line NUMERIC,
-                    book TEXT,
-                    price INT,
-                    edge_pct NUMERIC NOT NULL,
-                    confidence TEXT NOT NULL,
-                    grade TEXT,
-                    grade_reason TEXT,
-                    status TEXT NOT NULL DEFAULT 'active',
-                    model_version TEXT NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                )
-                """
-            )
-            cur.execute("ALTER TABLE odds ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_book TEXT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS best_price INT")
-            cur.execute("ALTER TABLE odds_normalized ADD COLUMN IF NOT EXISTS odds_asof TIMESTAMPTZ")
-            cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS market_book TEXT")
-            cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS market_price INT")
-            cur.execute("ALTER TABLE model_scores ADD COLUMN IF NOT EXISTS odds_asof TIMESTAMPTZ")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS market_book TEXT")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS market_price INT")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS decision TEXT")
-            cur.execute("ALTER TABLE edges ADD COLUMN IF NOT EXISTS rejection_reason TEXT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS book TEXT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS price INT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS grade TEXT")
-            cur.execute("ALTER TABLE picks ADD COLUMN IF NOT EXISTS grade_reason TEXT")
-            cur.execute("ALTER TABLE features ADD COLUMN IF NOT EXISTS player_id TEXT")
-            cur.execute("ALTER TABLE odds_normalized DROP CONSTRAINT IF EXISTS odds_normalized_pkey")
-            cur.execute("ALTER TABLE model_scores DROP CONSTRAINT IF EXISTS model_scores_pkey")
-            cur.execute("ALTER TABLE edges DROP CONSTRAINT IF EXISTS edges_pkey")
-            cur.execute("ALTER TABLE features DROP CONSTRAINT IF EXISTS features_pkey")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_picks_date_status ON picks(game_date, status)")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_game_market ON edges(game_id, market)")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_odds_game_market_book ON odds(game_id, market, book)")
-            cur.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_odds_normalized_game_player_market ON odds_normalized(game_id, player_id, market)"
-            )
-            cur.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_model_scores_game_player_market_scored ON model_scores(game_id, player_id, market, scored_at)"
-            )
-            cur.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_edges_game_player_market_side_scored ON edges(game_id, player_id, market, side, scored_at)"
-            )
-            cur.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_features_game_player_feature_generated ON features(game_id, player_id, feature_name, generated_at)"
-            )
+            columns: dict[str, set[str]] = {}
+            for row in cur.fetchall():
+                columns.setdefault(str(row["table_name"]), set()).add(str(row["column_name"]))
+            cur.execute("SELECT indexname FROM pg_indexes WHERE schemaname = current_schema()")
+            indexes = {str(row["indexname"]) for row in cur.fetchall()}
+    missing = missing_pregame_schema(columns, indexes)
+    if missing:
+        raise RuntimeError(
+            f"Pregame schema is out of date ({', '.join(missing)}): {PREGAME_MIGRATIONS_HINT}"
+        )
+    _pregame_schema_verified = True

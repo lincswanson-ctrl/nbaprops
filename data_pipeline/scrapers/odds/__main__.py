@@ -29,6 +29,7 @@ from data_pipeline.scrapers.odds.base import (
 from data_pipeline.scrapers.odds.betmgm import BetMGMScraper
 from data_pipeline.scrapers.odds.draftkings import DraftKingsScraper
 from data_pipeline.scrapers.odds.fanduel import FanDuelScraper
+from data_pipeline.seasons import infer_nba_season
 
 logger = get_logger(__name__)
 
@@ -595,16 +596,6 @@ async def refresh_today_schedule() -> None:
         files_skipped=summary.files_skipped,
         games_upserted=summary.games_upserted,
     )
-
-
-def infer_nba_season(target_date: date) -> str:
-    """Infer the NBA season label for a calendar date."""
-    if target_date.month >= 7:
-        start_year = target_date.year
-    else:
-        start_year = target_date.year - 1
-    end_year = start_year + 1
-    return f"{start_year}-{str(end_year)[-2:]}"
 
 
 if __name__ == "__main__":

@@ -76,7 +76,7 @@ def test_seed_insert_candidates_include_season_type_variants() -> None:
 
 
 def test_run_odds_raises_when_no_odds_and_not_allowed(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(pregame, "_ensure_pregame_tables", lambda: None)
+    monkeypatch.setattr(pregame, "_require_pregame_schema", lambda: None)
     monkeypatch.setattr(pregame, "_scrape_player_prop_odds", lambda _d, _s: None)
     monkeypatch.setattr(
         pregame,
@@ -94,7 +94,7 @@ def test_run_odds_raises_when_no_odds_and_not_allowed(monkeypatch: pytest.Monkey
 
 
 def test_run_odds_allows_empty_when_flag_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(pregame, "_ensure_pregame_tables", lambda: None)
+    monkeypatch.setattr(pregame, "_require_pregame_schema", lambda: None)
     monkeypatch.setattr(pregame, "_scrape_player_prop_odds", lambda _d, _s: None)
     monkeypatch.setattr(
         pregame,
@@ -138,3 +138,25 @@ def test_scrape_player_prop_odds_does_not_refresh_today_twice(
     assert captured["book"] == "draftkings"
     assert captured["markets"] == ["player_points"]
     assert captured["refresh_schedule"] is False
+
+
+def test_missing_pregame_schema_complete() -> None:
+    columns = {t: set(cols) for t, cols in pregame.PREGAME_REQUIRED_COLUMNS.items()}
+    assert pregame.missing_pregame_schema(columns, set(pregame.PREGAME_REQUIRED_UNIQUE_INDEXES)) == []
+
+
+def test_missing_pregame_schema_reports_columns_tables_and_indexes() -> None:
+    columns = {t: set(cols) for t, cols in pregame.PREGAME_REQUIRED_COLUMNS.items()}
+    columns["odds"].discard("under_price")
+    del columns["picks"]
+    missing = pregame.missing_pregame_schema(columns, set())
+    assert "odds.under_price" in missing
+    assert "table picks" in missing
+    assert "index ux_odds_normalized_game_player_market" in missing
+
+
+def test_missing_pregame_schema_empty_database() -> None:
+    missing = pregame.missing_pregame_schema({}, set())
+    assert len(missing) == len(pregame.PREGAME_REQUIRED_COLUMNS) + len(
+        pregame.PREGAME_REQUIRED_UNIQUE_INDEXES
+    )
