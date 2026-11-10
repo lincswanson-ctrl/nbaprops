@@ -68,6 +68,15 @@ $env:PREGAME_ODDS_CSV="C:\path\to\manual_odds.csv"
 py scripts/run_pregame.py --date 2026-11-10 --season 2026-27
 ```
 
+### Backtest (walk-forward, spec 07)
+
+```powershell
+py -m orchestration.backtest --season 2025-26 --mode calibration
+py -m orchestration.backtest --start 2026-04-18 --end 2026-06-20 --mode betting --all-game-types --label playoffs-2026
+```
+
+Writes `data/backtest/calibration_<label>.json`, `summary_<label>.json`, `bankroll_<label>.json`, `bets_<label>.csv`.
+
 ### Dashboard only (assumes picks already generated)
 
 ```powershell

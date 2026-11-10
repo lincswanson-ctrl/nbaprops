@@ -14,6 +14,7 @@ import httpx
 import structlog
 
 from betting.market import BookOffer, Consensus, SideDecision, consensus_offer, pick_side
+from betting.selection import Candidate, SelectionRules, select_picks
 from data_pipeline.config import get_settings
 from data_pipeline.db import get_connection
 from data_pipeline.loaders.injuries import InjuryLoader
@@ -50,6 +51,7 @@ MARKET_EDGE_THRESHOLDS: dict[str, float] = {
     "player_steals": 0.07,
     "player_steals_blocks": 0.07,
 }
+DEFAULT_MARKET_EDGE_THRESHOLD = 0.07
 
 
 @dataclass(frozen=True)
@@ -1131,10 +1133,11 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                 key=lambda r: r["_side"].edge,
                 reverse=True,
             )
-            player_pick_counts: dict[str, int] = {}
-            game_pick_counts: dict[str, int] = {}
             selected_for_picks: list[dict[str, Any]] = []
-            for row in rows_sorted:
+            decisions = select_picks(
+                [_candidate_for_row(row, now_utc) for row in rows_sorted], selection_rules()
+            )
+            for row, outcome in zip(rows_sorted, decisions, strict=True):
                 chosen = row["_side"]
                 side = chosen.side
                 edge = chosen.edge
@@ -1147,27 +1150,13 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                 market = str(row["market"])
                 player_id = str(row["player_id"])
                 game_id = str(row["game_id"])
-                decision = "keep"
-                rejection_reason: str | None = None
-                if _is_stale_odds(row.get("odds_asof"), now_utc):
-                    decision = "reject"
-                    rejection_reason = "stale_odds"
+                decision = outcome.decision
+                rejection_reason = outcome.rejection_reason
+                if rejection_reason == "stale_odds":
                     rejected_stale += 1
-                if decision == "keep" and chosen.price is None:
-                    decision = "reject"
-                    rejection_reason = "no_under_price"
-                threshold = _market_edge_threshold(market)
-                if decision == "keep" and edge < threshold:
-                    decision = "reject"
-                    rejection_reason = "below_threshold"
+                elif rejection_reason == "below_threshold":
                     rejected_threshold += 1
-                if decision == "keep" and player_pick_counts.get(player_id, 0) >= MAX_PICKS_PER_PLAYER:
-                    decision = "reject"
-                    rejection_reason = "player_cap"
-                    rejected_exposure += 1
-                if decision == "keep" and game_pick_counts.get(game_id, 0) >= MAX_PICKS_PER_GAME:
-                    decision = "reject"
-                    rejection_reason = "game_cap"
+                elif rejection_reason in {"player_cap", "game_cap"}:
                     rejected_exposure += 1
 
                 cur.execute(
@@ -1208,7 +1197,7 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                         "market_price": row["market_price"],
                     }
                 )
-                if decision == "keep" and edge >= EDGE_THRESHOLD:
+                if outcome.is_pick:
                     selected_for_picks.append(
                         {
                             "game_id": game_id,
@@ -1223,8 +1212,6 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                             "price": row["market_price"],
                         }
                     )
-                    player_pick_counts[player_id] = player_pick_counts.get(player_id, 0) + 1
-                    game_pick_counts[game_id] = game_pick_counts.get(game_id, 0) + 1
             selected_sorted = sorted(selected_for_picks, key=lambda r: float(r["edge"]), reverse=True)
             total_selected = len(selected_sorted)
             for idx, pick in enumerate(selected_sorted):
@@ -1271,6 +1258,31 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
             "rejected_threshold": rejected_threshold,
             "rejected_exposure": rejected_exposure,
         },
+    )
+
+
+def selection_rules() -> SelectionRules:
+    """Live thresholds and exposure caps (also replayed by the backtest)."""
+    return SelectionRules(
+        market_thresholds=MARKET_EDGE_THRESHOLDS,
+        default_threshold=DEFAULT_MARKET_EDGE_THRESHOLD,
+        min_pick_edge=EDGE_THRESHOLD,
+        max_picks_per_player=MAX_PICKS_PER_PLAYER,
+        max_picks_per_game=MAX_PICKS_PER_GAME,
+    )
+
+
+def _candidate_for_row(row: dict[str, Any], now_utc: datetime) -> Candidate:
+    chosen: SideDecision = row["_side"]
+    return Candidate(
+        game_id=str(row["game_id"]),
+        player_id=str(row["player_id"]),
+        market=str(row["market"]),
+        side=chosen.side,
+        edge=chosen.edge,
+        book=chosen.book,
+        price=chosen.price,
+        stale=_is_stale_odds(row.get("odds_asof"), now_utc),
     )
 
 
@@ -1522,7 +1534,7 @@ def _edge_pct(model_prob: float, market_prob: float) -> float:
 
 
 def _market_edge_threshold(market: str) -> float:
-    return MARKET_EDGE_THRESHOLDS.get(market, 0.07)
+    return MARKET_EDGE_THRESHOLDS.get(market, DEFAULT_MARKET_EDGE_THRESHOLD)
 
 
 def _is_stale_odds(odds_asof: datetime | None, now_utc: datetime) -> bool:
