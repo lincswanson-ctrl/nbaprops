@@ -11,6 +11,7 @@ from typing import Protocol
 import httpx
 from pydantic import BaseModel, ConfigDict
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
+from selectolax.lexbor import LexborNode as Node
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential_jitter
 
 from data_pipeline.config import get_settings
@@ -85,19 +86,32 @@ class RotowireScraper(_BaseScraper):
         records: list[InjuryRecord] = []
         now = datetime.now(timezone.utc)
         for node in html.css(".lineup__player"):
-            name_node = node.css_first(".lineup__player-name")
-            status_node = node.css_first(".lineup__injury-status")
-            if name_node is None or status_node is None:
+            name = _rotowire_player_name(node)
+            status_node = node.css_first(".lineup__inj") or node.css_first(".lineup__injury-status")
+            if name is None or status_node is None:
                 continue
             records.append(
                 InjuryRecord(
-                    raw_player_name=name_node.text(strip=True),
+                    raw_player_name=name,
                     raw_status=status_node.text(strip=True),
                     source=self.source,
                     scraped_at=now,
                 )
             )
         return records
+
+
+def _rotowire_player_name(node: Node) -> str | None:
+    """Return the full player name from a Rotowire ``.lineup__player`` node.
+
+    Current markup puts the full name in the player link's ``title`` attribute (the link
+    text is abbreviated, e.g. "Q. Grimes"); older markup used ``.lineup__player-name``.
+    """
+    link = node.css_first("a")
+    if link is not None and (link.attributes.get("title") or "").strip():
+        return str(link.attributes["title"]).strip()
+    legacy = node.css_first(".lineup__player-name")
+    return legacy.text(strip=True) if legacy is not None else None
 
 
 class ESPNScraper(_BaseScraper):

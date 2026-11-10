@@ -6,15 +6,20 @@ import re
 
 STATUS_MAP: dict[str, str] = {
     "out": "out",
+    "ofs": "out",  # Rotowire: out for season
+    "out for season": "out",
     "inactive": "out",
     "will not play": "out",
     "doubtful": "doubtful",
     "dtd": "doubtful",
+    "doubt": "doubtful",  # Rotowire abbreviation
     "questionable": "questionable",
     "gtd": "questionable",
+    "ques": "questionable",  # Rotowire abbreviation
     "game-time decision": "questionable",
     "probable": "probable",
     "expected to play": "probable",
+    "prob": "probable",  # Rotowire abbreviation
     "available": "available",
     "active": "available",
 }
