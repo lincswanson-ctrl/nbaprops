@@ -12,6 +12,7 @@ STATUS_MAP: dict[str, str] = {
     "will not play": "out",
     "doubtful": "doubtful",
     "dtd": "doubtful",
+    "day-to-day": "doubtful",  # ESPN; spec 02 maps DTD -> doubtful
     "doubt": "doubtful",  # Rotowire abbreviation
     "questionable": "questionable",
     "gtd": "questionable",

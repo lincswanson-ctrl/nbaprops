@@ -66,3 +66,33 @@ def test_parse_rotowire_2026_markup_skips_players_without_status() -> None:
 
 def test_parse_rotowire_empty_page_returns_no_records() -> None:
     assert RotowireScraper().parse(b"<html><body></body></html>") == []
+
+
+def test_parse_espn_injuries_page_2026_layout() -> None:
+    """Real 2026-27 layout: one table per team, NAME | POS | RETURN | STATUS | COMMENT."""
+    records = ESPNScraper().parse((FIXTURE_ROOT / "espn_injuries_2026_11_10.html").read_bytes())
+    rows = [(r.raw_player_name, r.team_abbr, r.raw_status, r.body_part) for r in records]
+    assert rows == [
+        ("Asa Newell", "ATL", "Out", "Toe"),
+        ("Keshon Gilbert", "ATL", "Out", "Knee"),
+        ("Mikel Brown Jr.", "BKN", "Day-To-Day", None),
+        ("Grant Nelson", "BKN", "Day-To-Day", None),
+    ]
+    assert all(r.source == "espn" for r in records)
+
+
+def test_parse_espn_injuries_page_unknown_team_keeps_rows() -> None:
+    html = (FIXTURE_ROOT / "espn_injuries_2026_11_10.html").read_text(encoding="utf-8")
+    html = html.replace("Atlanta Hawks", "Seattle Expansion")
+    records = ESPNScraper().parse(html.encode("utf-8"))
+    assert len(records) == 4
+    assert [r.team_abbr for r in records[:2]] == [None, None]
+
+
+def test_parse_espn_injuries_page_empty_returns_no_records() -> None:
+    assert ESPNScraper().parse(b"<html><body></body></html>") == []
+
+
+def test_espn_scraper_targets_injuries_page() -> None:
+    assert ESPNScraper.url == "https://www.espn.com/nba/injuries"
+    assert ESPNScraper.suffix == "html"

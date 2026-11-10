@@ -176,6 +176,7 @@ def test_loader_snapshot_counts(monkeypatch: pytest.MonkeyPatch) -> None:
         ("Prob", "probable"),
         ("Out", "out"),
         ("OFS", "out"),
+        ("Day-To-Day", "doubtful"),
         (" ofs ", "out"),
         ("Suspended", "unknown"),
     ],
