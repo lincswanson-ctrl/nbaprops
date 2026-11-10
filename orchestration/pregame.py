@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 import structlog
 
+from data_pipeline.config import get_settings
 from data_pipeline.db import get_connection
 from data_pipeline.loaders.injuries import InjuryLoader
 from data_pipeline.loaders.nba_stats import NBAStatsLoader
@@ -24,6 +25,9 @@ from data_pipeline.scrapers.odds.__main__ import infer_nba_season, refresh_today
 from data_pipeline.scrapers.odds.base import canonical_market_names, normalize_team_abbr
 from data_pipeline.scrapers.odds.betmgm import BetMGMScraper
 from data_pipeline.scrapers.odds.draftkings import DraftKingsScraper
+from models.baseline.projection import BASELINE_LOOKBACK_DAYS, BASELINE_MAX_GAMES
+from models.baseline.projection import MODEL_VERSION as BASELINE_MODEL_VERSION
+from models.baseline.projection import score_market
 
 logger = structlog.get_logger(__name__)
 
@@ -824,8 +828,118 @@ def _spread_abs_for_game(cur: Any, game_id: str) -> float:
 
 
 def run_model(target_date: date, season: str) -> StepResult:
-    """Run a deterministic naive model using feature values."""
+    """Score every market for ``target_date`` with the configured model version.
+
+    ``PREGAME_MODEL_VERSION=baseline_v1`` (default, spec 05) projects each player's stat
+    distribution and prices the actual line; ``naive_v1`` is the legacy placeholder.
+    """
     _ensure_pregame_tables()
+    if _active_model_version() == BASELINE_MODEL_VERSION:
+        return _run_baseline_model(target_date)
+    return _run_naive_model(target_date, season)
+
+
+def _active_model_version() -> str:
+    return str(get_settings().pregame_model_version)
+
+
+def _run_baseline_model(target_date: date) -> StepResult:
+    """Score markets with ``models.baseline.projection`` (P(over consensus line))."""
+    scored = skipped = 0
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM model_scores"
+                " WHERE game_id IN (SELECT game_id FROM games WHERE date = %(d)s)",
+                {"d": target_date},
+            )
+            history: dict[str, list[dict[str, Any]]] = {}
+            for row in _markets_for_date(cur, target_date):
+                player_id = str(row["player_id"])
+                if player_id not in history:
+                    history[player_id] = _baseline_history(cur, player_id, target_date)
+                prob = score_market(
+                    str(row["market"]), float(row["consensus_line"]), history[player_id]
+                )
+                if prob is None:
+                    skipped += 1
+                    continue
+                _insert_model_score(cur, row, prob, BASELINE_MODEL_VERSION)
+                scored += 1
+    logger.info("pregame_baseline_scored", scored=scored, skipped=skipped)
+    return StepResult(
+        name="4_model",
+        details={"scores": scored, "skipped": skipped, "model_version": BASELINE_MODEL_VERSION},
+    )
+
+
+def _markets_for_date(cur: Any, target_date: date) -> list[dict[str, Any]]:
+    cur.execute(
+        """
+        SELECT o.game_id, o.player_id, o.market, o.consensus_line,
+               o.best_book, o.best_price, o.odds_asof
+        FROM odds_normalized o
+        JOIN games g ON g.game_id = o.game_id
+        WHERE g.date = %(d)s
+        """,
+        {"d": target_date},
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+def _baseline_history(cur: Any, player_id: str, target_date: date) -> list[dict[str, Any]]:
+    """Played games strictly before ``target_date`` (point-in-time), most recent first."""
+    cur.execute(
+        """
+        SELECT pgs.points, pgs.rebounds, pgs.assists, pgs.fg3m, pgs.steals, pgs.blocks
+        FROM player_game_stats pgs
+        JOIN games g ON g.game_id = pgs.game_id
+        WHERE pgs.player_id::text = %(p)s::text
+          AND g.date < %(d)s
+          AND g.date >= %(d)s - %(lookback)s::int
+          AND COALESCE(pgs.minutes, 0) > 0
+          AND pgs.dnp_reason IS NULL
+        ORDER BY g.date DESC
+        LIMIT %(n)s
+        """,
+        {
+            "p": player_id,
+            "d": target_date,
+            "lookback": BASELINE_LOOKBACK_DAYS,
+            "n": BASELINE_MAX_GAMES,
+        },
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+def _insert_model_score(cur: Any, row: dict[str, Any], prob: float, version: str) -> None:
+    cur.execute(
+        """
+        INSERT INTO model_scores (
+            game_id, player_id, market, model_prob, model_line, market_book, market_price,
+            odds_asof, scored_at, model_version
+        )
+        VALUES (
+            %(game_id)s, %(player_id)s, %(market)s, %(model_prob)s, %(model_line)s,
+            %(market_book)s, %(market_price)s, %(odds_asof)s, NOW(), %(model_version)s
+        )
+        """,
+        {
+            "game_id": row["game_id"],
+            "player_id": row["player_id"],
+            "market": row["market"],
+            "model_prob": prob,
+            "model_line": row["consensus_line"],
+            "market_book": row["best_book"],
+            "market_price": row["best_price"],
+            "odds_asof": row["odds_asof"],
+            "model_version": version,
+        },
+    )
+
+
+def _run_naive_model(target_date: date, season: str) -> StepResult:
+    """Legacy placeholder model (``naive_v1``); ignores the line. Kept for comparison."""
     del season
     scored = 0
     with get_connection() as conn:
@@ -1047,7 +1161,7 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                         "market_price": row["market_price"],
                         "decision": decision,
                         "rejection_reason": rejection_reason,
-                        "model_version": MODEL_VERSION,
+                        "model_version": _active_model_version(),
                     },
                 )
                 edges_total += 1
@@ -1071,7 +1185,7 @@ def run_edge_selection(target_date: date, season: str) -> StepResult:
                             "side": side,
                             "line": row["model_line"],
                             "edge": edge,
-                            "model_version": MODEL_VERSION,
+                            "model_version": _active_model_version(),
                             "player_id": player_id,
                             "book": row["market_book"],
                             "price": row["market_price"],

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -22,6 +23,8 @@ class Settings(BaseSettings):
     odds_poll_near_window_minutes: int = 30
     odds_poll_start_window_hours: int = 4
     discord_webhook_url: str | None = None
+    # Pregame model: "baseline_v1" (spec 05) or "naive_v1" (legacy placeholder).
+    pregame_model_version: Literal["baseline_v1", "naive_v1"] = "baseline_v1"
     # FanDuel scraper: SBAPI host must match the licensed state subdomain from discovery.
     # Override via FANDUEL_SBAPI_HOST when geolocation resolves elsewhere.
     fanduel_sbapi_host: str = "sbapi.nj.sportsbook.fanduel.com"
